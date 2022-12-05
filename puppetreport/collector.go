@@ -72,13 +72,6 @@ func (c Collector) Collect(ch chan<- prometheus.Metric) {
 	result.collect(ch)
 }
 
-func (c Collector) reportPath() string {
-	if c.ReportPath != "" {
-		return c.ReportPath
-	}
-	return "/opt/puppetlabs/puppet/cache/state/last_run_report.yaml"
-}
-
 type Logger interface {
 	Errorw(msg string, keysAndValues ...interface{})
 }

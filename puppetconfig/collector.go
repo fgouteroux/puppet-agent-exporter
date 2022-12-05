@@ -48,13 +48,6 @@ func (c Collector) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(configDesc, prometheus.GaugeValue, 1, server, environment)
 }
 
-func (c Collector) configPath() string {
-	if c.ConfigPath != "" {
-		return c.ConfigPath
-	}
-	return "/etc/puppetlabs/puppet/puppet.conf"
-}
-
 type Logger interface {
 	Errorw(msg string, keysAndValues ...interface{})
 	Panicw(msg string, keysAndValues ...interface{})
