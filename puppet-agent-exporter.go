@@ -24,6 +24,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/prometheus/common/version"
 	"github.com/retailnext/puppet-agent-exporter/puppetconfig"
 	"github.com/retailnext/puppet-agent-exporter/puppetreport"
 	"go.uber.org/zap"
@@ -87,7 +88,10 @@ func run(ctx context.Context, listenAddress, telemetryPath string) (ok bool) {
 	prometheus.DefaultRegisterer.MustRegister(puppetreport.Collector{
 		Logger: lgr,
 	})
+	prometheus.MustRegister(version.NewCollector("puppet_agent_exporter"))
 
+	lgr.Infow("Starting puppet-agent-exporter", "version", version.Info())
+	lgr.Infow("Build context", "build_context", version.BuildContext())
 	mux := http.NewServeMux()
 	mux.Handle(telemetryPath, promhttp.Handler())
 	mux.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
@@ -129,6 +133,7 @@ func main() {
 		listenAddress = kingpin.Flag("web.listen-address", "Address on which to expose metrics and web interface.").Default(":9819").String()
 		telemetryPath = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
 	)
+	kingpin.Version(version.Print("puppet-agent-exporter"))
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 
