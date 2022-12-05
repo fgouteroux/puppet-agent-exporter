@@ -14,7 +14,11 @@
 
 package puppetreport
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
+	"github.com/prometheus/client_golang/prometheus"
+)
 
 var (
 	catalogVersionDesc = prometheus.NewDesc(
@@ -47,7 +51,7 @@ var (
 )
 
 type Collector struct {
-	Logger     Logger
+	Logger     log.Logger
 	ReportPath string
 }
 
@@ -61,7 +65,7 @@ func (c Collector) Describe(ch chan<- *prometheus.Desc) {
 func (c Collector) Collect(ch chan<- prometheus.Metric) {
 	var result interpretedReport
 	if report, err := load(c.reportPath()); err != nil {
-		c.Logger.Errorw("puppet_read_run_report_failed", "err", err)
+		level.Error(c.Logger).Log("msg", "Failed to read puppet run report file", "err", err)
 	} else {
 		result = report.interpret()
 	}

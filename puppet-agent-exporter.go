@@ -15,135 +15,61 @@
 package main
 
 import (
-	"context"
-	"html/template"
 	"net/http"
 	"os"
-	"os/signal"
-	"time"
+
+	"github.com/go-kit/log/level"
+	"github.com/prometheus/common/promlog"
+	"github.com/prometheus/common/promlog/flag"
+	"github.com/prometheus/exporter-toolkit/web"
+	webflag "github.com/prometheus/exporter-toolkit/web/kingpinflag"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
 	"github.com/retailnext/puppet-agent-exporter/puppetconfig"
 	"github.com/retailnext/puppet-agent-exporter/puppetreport"
-	"go.uber.org/zap"
-	"golang.org/x/term"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
-
-func setupLogger() func() {
-	var logger *zap.Logger
-	var err error
-	if term.IsTerminal(int(os.Stdin.Fd())) {
-		logger, err = zap.NewDevelopment()
-	} else {
-		logger, err = zap.NewProduction()
-	}
-	if err != nil {
-		panic(err)
-	}
-	zap.ReplaceGlobals(logger)
-	zap.RedirectStdLog(logger)
-
-	return func() {
-		_ = logger.Sync()
-	}
-}
-
-func setupInterruptContext() (context.Context, func()) {
-	ctx, cancel := context.WithCancel(context.Background())
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	go func() {
-		select {
-		case sig := <-c:
-			zap.S().Infow("shutting_down", "signal", sig)
-			cancel()
-		case <-ctx.Done():
-		}
-	}()
-	onExit := func() {
-		signal.Stop(c)
-		cancel()
-	}
-	return ctx, onExit
-}
-
-var rootTemplate = template.Must(template.New("/").Parse(`<html>
-<head><title>puppet-agent-exporter</title></head>
-<body>
-<h1>puppet-agent-exporter</h1>
-<p><a href="{{.}}">Metrics</a></p>
-</body>
-</html>
-`))
-
-func run(ctx context.Context, listenAddress, telemetryPath string) (ok bool) {
-	lgr := zap.S()
-
-	prometheus.DefaultRegisterer.MustRegister(puppetconfig.Collector{
-		Logger: lgr,
-	})
-	prometheus.DefaultRegisterer.MustRegister(puppetreport.Collector{
-		Logger: lgr,
-	})
-	prometheus.MustRegister(version.NewCollector("puppet_agent_exporter"))
-
-	lgr.Infow("Starting puppet-agent-exporter", "version", version.Info())
-	lgr.Infow("Build context", "build_context", version.BuildContext())
-	mux := http.NewServeMux()
-	mux.Handle(telemetryPath, promhttp.Handler())
-	mux.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
-		_ = rootTemplate.Execute(writer, telemetryPath)
-	})
-	server := &http.Server{Addr: listenAddress, Handler: mux}
-
-	resultCh := make(chan bool)
-	go func() {
-		err := server.ListenAndServe()
-		if err == http.ErrServerClosed {
-			resultCh <- true
-			return
-		}
-		lgr.Errorw("listen_and_serve_failed", "err", err)
-		resultCh <- false
-	}()
-
-	stopCh := ctx.Done()
-	for {
-		select {
-		case <-stopCh:
-			shutdownCtx, cancelShutdownCtx := context.WithTimeout(context.Background(), 5*time.Second)
-			if shutdownErr := server.Shutdown(shutdownCtx); shutdownErr != nil {
-				lgr.Warnw("server_shutdown_failed", "err", shutdownErr)
-			}
-			cancelShutdownCtx()
-			ok = <-resultCh
-			return
-		case ok = <-resultCh:
-			return
-		}
-	}
-}
 
 func main() {
 	// Flag definitions copied from github.com/prometheus/node_exporter
 	var (
-		listenAddress = kingpin.Flag("web.listen-address", "Address on which to expose metrics and web interface.").Default(":9819").String()
-		telemetryPath = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
+		metricsPath = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
+		webConfig   = webflag.AddFlags(kingpin.CommandLine, ":9819")
 	)
+	promlogConfig := &promlog.Config{}
+	flag.AddFlags(kingpin.CommandLine, promlogConfig)
 	kingpin.Version(version.Print("puppet-agent-exporter"))
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
+	logger := promlog.New(promlogConfig)
 
-	syncLogger := setupLogger()
-	defer syncLogger()
+	prometheus.MustRegister(puppetconfig.Collector{
+		Logger: logger,
+	})
+	prometheus.MustRegister(puppetreport.Collector{
+		Logger: logger,
+	})
+	prometheus.MustRegister(version.NewCollector("puppet_agent_exporter"))
 
-	ctx, onExit := setupInterruptContext()
-	defer onExit()
+	level.Info(logger).Log("msg", "Starting puppet-agent-exporter", "version", version.Info())
+	level.Info(logger).Log("msg", "Build context", "build_context", version.BuildContext())
 
-	if ok := run(ctx, *listenAddress, *telemetryPath); !ok {
+	http.Handle(*metricsPath, promhttp.Handler())
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`<html>
+			<head><title>Puppet Agent Exporter</title></head>
+			<body>
+			<h1>Puppet Agent Exporter</h1>
+			<p><a href="` + *metricsPath + `">Metrics</a></p>
+			</body>
+			</html>`))
+	})
+
+	server := &http.Server{}
+	if err := web.ListenAndServe(server, webConfig, logger); err != nil {
+		level.Error(logger).Log("err", err)
 		os.Exit(1)
 	}
 }

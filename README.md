@@ -65,6 +65,13 @@ Alerting on a non-default environment being set helps catch operator error,
 for example when a node is used to test changes from a branch environment
 but forgotten about after that branch is merged.
 
+## TLS and basic authentication
+
+Puppet Agent Exporter supports TLS and basic authentication. This enables better control of the various HTTP endpoints.
+
+To use TLS and/or basic authentication, you need to pass a configuration file using the `--web.config.file` parameter. The format of the file is described
+[in the exporter-toolkit repository](https://github.com/prometheus/exporter-toolkit/blob/master/docs/web-configuration.md).
+
 ## Project Status: **Works For Us**
 
 This is an open-source release of something we've used for quite a while
