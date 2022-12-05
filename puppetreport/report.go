@@ -15,6 +15,9 @@
 package puppetreport
 
 import (
+	"encoding/json"
+	"errors"
+	"io/ioutil"
 	"os"
 	"strconv"
 	"time"
@@ -105,7 +108,7 @@ type puppetUtilLog struct {
 	Time time.Time `yaml:"time"`
 }
 
-func load(path string) (runReport, error) {
+func loadReport(path string) (runReport, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return runReport{}, err
@@ -115,4 +118,33 @@ func load(path string) (runReport, error) {
 	var report runReport
 	err = decoder.Decode(&report)
 	return report, multierr.Append(err, file.Close())
+}
+
+type agentDisabledLock struct {
+	Disabled        bool
+	DisabledMessage string `json:"disabled_message"`
+}
+
+func processDisabledLock(path string) (agentDisabledLock, error) {
+	disabledLockContent, err := ioutil.ReadFile(path)
+
+	var disabledLock agentDisabledLock
+	disabledLock.Disabled = true
+
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			disabledLock.Disabled = false
+		} else {
+			return disabledLock, err
+		}
+	}
+
+	if disabledLockContent != nil {
+		if err := json.Unmarshal(disabledLockContent, &disabledLock); err != nil {
+			return disabledLock, err
+		}
+	}
+
+	return disabledLock, nil
+
 }
