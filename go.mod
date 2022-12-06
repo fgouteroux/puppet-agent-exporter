@@ -1,4 +1,4 @@
-module github.com/retailnext/puppet-agent-exporter
+module github.com/fgouteroux/puppet-agent-exporter
 
 go 1.19
 
