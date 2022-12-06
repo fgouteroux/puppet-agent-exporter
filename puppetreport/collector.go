@@ -22,7 +22,7 @@ import (
 
 var (
 	catalogVersionDesc = prometheus.NewDesc(
-		"puppet_last_catalog_version",
+		"puppet_last_catalog_version_info",
 		"The version of the last attempted Puppet catalog.",
 		nil,
 		nil,
@@ -87,7 +87,7 @@ func (c Collector) Collect(ch chan<- prometheus.Metric) {
 		if disabledLock.Disabled {
 			disabledLockMetricValue = 1
 		}
-		ch <- prometheus.MustNewConstMetric(disabledLockDesc, prometheus.CounterValue, disabledLockMetricValue, []string{disabledLock.DisabledMessage}...)
+		ch <- prometheus.MustNewConstMetric(disabledLockDesc, prometheus.GaugeValue, disabledLockMetricValue, []string{disabledLock.DisabledMessage}...)
 	}
 }
 
