@@ -17,7 +17,6 @@ package puppetreport
 import (
 	"encoding/json"
 	"errors"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"time"
@@ -38,9 +37,11 @@ type runReport struct {
 
 func (r runReport) interpret() interpretedReport {
 	result := interpretedReport{
-		RunAt:          asUnixSeconds(r.Time),
-		RunDuration:    r.totalDuration(),
-		CatalogVersion: r.ConfigurationVersion,
+		RunAt:                 asUnixSeconds(r.Time),
+		RunDuration:           r.totalDuration(),
+		CatalogVersion:        r.ConfigurationVersion,
+		RunReportResources:    r.resourcesMetrics(),
+		RunReportTimeDuration: r.reportTimeDurationMetrics(),
 	}
 	if r.success() {
 		result.RunSuccess = 1
@@ -80,6 +81,38 @@ func (r runReport) success() bool {
 	return ok > 0 && failed == 0
 }
 
+func (r runReport) resourcesMetrics() map[string]float64 {
+	result := make(map[string]float64)
+	resourcesMetrics, ok := r.Metrics["resources"]
+	if !ok {
+		return result
+	}
+
+	for resource, value := range resourcesMetrics.Values() {
+		result[resource] = value
+	}
+
+	return result
+}
+
+func (r runReport) reportTimeDurationMetrics() map[string]float64 {
+	result := make(map[string]float64)
+	reportTimeDurationMetrics, ok := r.Metrics["time"]
+	if !ok {
+		return result
+	}
+
+	for resource, value := range reportTimeDurationMetrics.Values() {
+		// Skip total as reported in RunDuration
+		if resource == "total" {
+			continue
+		}
+		result[resource] = value
+	}
+
+	return result
+}
+
 type resourceStatus struct {
 	Failed         bool    `yaml:"failed"`
 	EvaluationTime float64 `yaml:"evaluation_time"`
@@ -108,7 +141,7 @@ type puppetUtilLog struct {
 	Time time.Time `yaml:"time"`
 }
 
-func loadReport(path string) (runReport, error) {
+func load(path string) (runReport, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return runReport{}, err
@@ -126,7 +159,7 @@ type agentDisabledLock struct {
 }
 
 func processDisabledLock(path string) (agentDisabledLock, error) {
-	disabledLockContent, err := ioutil.ReadFile(path)
+	disabledLockContent, err := os.ReadFile(path)
 
 	var disabledLock agentDisabledLock
 	disabledLock.Disabled = true

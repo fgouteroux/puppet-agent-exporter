@@ -48,9 +48,21 @@ var (
 		nil,
 		nil,
 	)
+	runResourcesDesc = prometheus.NewDesc(
+		"puppet_last_run_report_resources",
+		"Resources state of the last Puppet run",
+		[]string{"type"},
+		nil,
+	)
+	runReportTimeDurationDesc = prometheus.NewDesc(
+		"puppet_last_run_report_time_duration_seconds",
+		"Resources duration of the last Puppet run.",
+		[]string{"type"},
+		nil,
+	)
 	disabledLockDesc = prometheus.NewDesc(
 		"puppet_disabled_lock_info",
-		"Puppet state of agent disabled lock",
+		"Puppet state of agent disabled lock.",
 		[]string{"disabled_message"},
 		nil,
 	)
@@ -67,12 +79,14 @@ func (c Collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- runAtDesc
 	ch <- runDurationDesc
 	ch <- runSuccessDesc
+	ch <- runResourcesDesc
+	ch <- runReportTimeDurationDesc
 	ch <- disabledLockDesc
 }
 
 func (c Collector) Collect(ch chan<- prometheus.Metric) {
 	var result interpretedReport
-	if report, err := loadReport(c.reportPath()); err != nil {
+	if report, err := load(c.reportPath()); err != nil {
 		level.Error(c.Logger).Log("msg", "Failed to read puppet run report file", "err", err)
 	} else {
 		result = report.interpret()
@@ -96,10 +110,12 @@ type Logger interface {
 }
 
 type interpretedReport struct {
-	RunAt          float64
-	RunDuration    float64
-	CatalogVersion float64
-	RunSuccess     float64
+	RunAt                 float64
+	RunDuration           float64
+	CatalogVersion        float64
+	RunSuccess            float64
+	RunReportResources    map[string]float64
+	RunReportTimeDuration map[string]float64
 }
 
 func (r interpretedReport) collect(ch chan<- prometheus.Metric) {
@@ -107,4 +123,13 @@ func (r interpretedReport) collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(runAtDesc, prometheus.GaugeValue, r.RunAt)
 	ch <- prometheus.MustNewConstMetric(runDurationDesc, prometheus.GaugeValue, r.RunDuration)
 	ch <- prometheus.MustNewConstMetric(runSuccessDesc, prometheus.GaugeValue, r.RunSuccess)
+
+	for resource, value := range r.RunReportResources {
+		ch <- prometheus.MustNewConstMetric(runResourcesDesc, prometheus.GaugeValue, value, []string{resource}...)
+	}
+
+	for key, value := range r.RunReportTimeDuration {
+		ch <- prometheus.MustNewConstMetric(runReportTimeDurationDesc, prometheus.GaugeValue, value, []string{key}...)
+	}
+
 }

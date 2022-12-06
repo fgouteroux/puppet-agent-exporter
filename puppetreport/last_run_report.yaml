@@ -17,9 +17,40 @@ logs:
   tags:
   - notice
   time: '2021-04-20T22:19:02.789529236+00:00'
-  file: 
-  line: 
+  file:
+  line:
 metrics:
+  resources:
+    name: resources
+    label: Resources
+    values:
+    - - total
+      - Total
+      - 574
+    - - skipped
+      - Skipped
+      - 0
+    - - failed
+      - Failed
+      - 0
+    - - failed_to_restart
+      - Failed to restart
+      - 0
+    - - restarted
+      - Restarted
+      - 0
+    - - changed
+      - Changed
+      - 1
+    - - out_of_sync
+      - Out of sync
+      - 1
+    - - scheduled
+      - Scheduled
+      - 0
+    - - corrective_change
+      - Corrective change
+      - 1
   time:
     name: time
     label: Time
@@ -27,6 +58,24 @@ metrics:
     - - total
       - Total
       - 17.199882286
+    - - plugin_sync
+      - Plugin sync
+      - 19.038186447694898
+    - - fact_generation
+      - Fact generation
+      - 3.733549404889345
+    - - convert_catalog
+      - Convert catalog
+      - 1.6039954144507647
+    - - config_retrieval
+      - Config retrieval
+      - 7.887831624597311
+    - - transaction_evaluation
+      - Transaction evaluation
+      - 23.296303944662213
+    - - catalog_application
+      - Catalog application
+      - 23.389429319649935
 resource_statuses:
   File[/var/log/unattended-upgrades]:
     failed: false
