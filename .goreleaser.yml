@@ -1,3 +1,4 @@
+---
 project_name: puppet-agent-exporter
 before:
   hooks:

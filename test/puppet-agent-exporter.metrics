@@ -1,0 +1,176 @@
+# HELP go_gc_duration_seconds A summary of the pause duration of garbage collection cycles.
+# TYPE go_gc_duration_seconds summary
+go_gc_duration_seconds{quantile="0"} 0
+go_gc_duration_seconds{quantile="0.25"} 0
+go_gc_duration_seconds{quantile="0.5"} 0
+go_gc_duration_seconds{quantile="0.75"} 0
+go_gc_duration_seconds{quantile="1"} 0
+go_gc_duration_seconds_sum 0
+go_gc_duration_seconds_count 0
+# HELP go_goroutines Number of goroutines that currently exist.
+# TYPE go_goroutines gauge
+go_goroutines 8
+# HELP go_info Information about the Go environment.
+# TYPE go_info gauge
+go_info{version="go1.19.3"} 1
+# HELP go_memstats_alloc_bytes Number of bytes allocated and still in use.
+# TYPE go_memstats_alloc_bytes gauge
+go_memstats_alloc_bytes 544576
+# HELP go_memstats_alloc_bytes_total Total number of bytes allocated, even if freed.
+# TYPE go_memstats_alloc_bytes_total counter
+go_memstats_alloc_bytes_total 544576
+# HELP go_memstats_buck_hash_sys_bytes Number of bytes used by the profiling bucket hash table.
+# TYPE go_memstats_buck_hash_sys_bytes gauge
+go_memstats_buck_hash_sys_bytes 4595
+# HELP go_memstats_frees_total Total number of frees.
+# TYPE go_memstats_frees_total counter
+go_memstats_frees_total 347
+# HELP go_memstats_gc_sys_bytes Number of bytes used for garbage collection system metadata.
+# TYPE go_memstats_gc_sys_bytes gauge
+go_memstats_gc_sys_bytes 7.808872e+06
+# HELP go_memstats_heap_alloc_bytes Number of heap bytes allocated and still in use.
+# TYPE go_memstats_heap_alloc_bytes gauge
+go_memstats_heap_alloc_bytes 544576
+# HELP go_memstats_heap_idle_bytes Number of heap bytes waiting to be used.
+# TYPE go_memstats_heap_idle_bytes gauge
+go_memstats_heap_idle_bytes 1.540096e+06
+# HELP go_memstats_heap_inuse_bytes Number of heap bytes that are in use.
+# TYPE go_memstats_heap_inuse_bytes gauge
+go_memstats_heap_inuse_bytes 2.359296e+06
+# HELP go_memstats_heap_objects Number of allocated objects.
+# TYPE go_memstats_heap_objects gauge
+go_memstats_heap_objects 3297
+# HELP go_memstats_heap_released_bytes Number of heap bytes released to OS.
+# TYPE go_memstats_heap_released_bytes gauge
+go_memstats_heap_released_bytes 1.540096e+06
+# HELP go_memstats_heap_sys_bytes Number of heap bytes obtained from system.
+# TYPE go_memstats_heap_sys_bytes gauge
+go_memstats_heap_sys_bytes 3.899392e+06
+# HELP go_memstats_last_gc_time_seconds Number of seconds since 1970 of last garbage collection.
+# TYPE go_memstats_last_gc_time_seconds gauge
+go_memstats_last_gc_time_seconds 0
+# HELP go_memstats_lookups_total Total number of pointer lookups.
+# TYPE go_memstats_lookups_total counter
+go_memstats_lookups_total 0
+# HELP go_memstats_mallocs_total Total number of mallocs.
+# TYPE go_memstats_mallocs_total counter
+go_memstats_mallocs_total 3644
+# HELP go_memstats_mcache_inuse_bytes Number of bytes in use by mcache structures.
+# TYPE go_memstats_mcache_inuse_bytes gauge
+go_memstats_mcache_inuse_bytes 2400
+# HELP go_memstats_mcache_sys_bytes Number of bytes used for mcache structures obtained from system.
+# TYPE go_memstats_mcache_sys_bytes gauge
+go_memstats_mcache_sys_bytes 15600
+# HELP go_memstats_mspan_inuse_bytes Number of bytes in use by mspan structures.
+# TYPE go_memstats_mspan_inuse_bytes gauge
+go_memstats_mspan_inuse_bytes 37264
+# HELP go_memstats_mspan_sys_bytes Number of bytes used for mspan structures obtained from system.
+# TYPE go_memstats_mspan_sys_bytes gauge
+go_memstats_mspan_sys_bytes 48960
+# HELP go_memstats_next_gc_bytes Number of heap bytes when next garbage collection will take place.
+# TYPE go_memstats_next_gc_bytes gauge
+go_memstats_next_gc_bytes 4.194304e+06
+# HELP go_memstats_other_sys_bytes Number of bytes used for other system allocations.
+# TYPE go_memstats_other_sys_bytes gauge
+go_memstats_other_sys_bytes 624261
+# HELP go_memstats_stack_inuse_bytes Number of bytes in use by the stack allocator.
+# TYPE go_memstats_stack_inuse_bytes gauge
+go_memstats_stack_inuse_bytes 294912
+# HELP go_memstats_stack_sys_bytes Number of bytes obtained from system for stack allocator.
+# TYPE go_memstats_stack_sys_bytes gauge
+go_memstats_stack_sys_bytes 294912
+# HELP go_memstats_sys_bytes Number of bytes obtained from system.
+# TYPE go_memstats_sys_bytes gauge
+go_memstats_sys_bytes 1.2696592e+07
+# HELP go_threads Number of OS threads created.
+# TYPE go_threads gauge
+go_threads 4
+# HELP process_cpu_seconds_total Total user and system CPU time spent in seconds.
+# TYPE process_cpu_seconds_total counter
+process_cpu_seconds_total 0.02
+# HELP process_max_fds Maximum number of open file descriptors.
+# TYPE process_max_fds gauge
+process_max_fds 4096
+# HELP process_open_fds Number of open file descriptors.
+# TYPE process_open_fds gauge
+process_open_fds 10
+# HELP process_resident_memory_bytes Resident memory size in bytes.
+# TYPE process_resident_memory_bytes gauge
+process_resident_memory_bytes 6.180864e+06
+# HELP process_start_time_seconds Start time of the process since unix epoch in seconds.
+# TYPE process_start_time_seconds gauge
+process_start_time_seconds 1.67033890952e+09
+# HELP process_virtual_memory_bytes Virtual memory size in bytes.
+# TYPE process_virtual_memory_bytes gauge
+process_virtual_memory_bytes 7.37296384e+08
+# HELP process_virtual_memory_max_bytes Maximum amount of virtual memory available in bytes.
+# TYPE process_virtual_memory_max_bytes gauge
+process_virtual_memory_max_bytes 1.8446744073709552e+19
+# HELP promhttp_metric_handler_requests_in_flight Current number of scrapes being served.
+# TYPE promhttp_metric_handler_requests_in_flight gauge
+promhttp_metric_handler_requests_in_flight 1
+# HELP promhttp_metric_handler_requests_total Total number of scrapes by HTTP status code.
+# TYPE promhttp_metric_handler_requests_total counter
+promhttp_metric_handler_requests_total{code="200"} 0
+promhttp_metric_handler_requests_total{code="500"} 0
+promhttp_metric_handler_requests_total{code="503"} 0
+# HELP puppet_agent_exporter_build_info A metric with a constant '1' value labeled by version, revision, branch, and goversion from which puppet_agent_exporter was built.
+# TYPE puppet_agent_exporter_build_info gauge
+puppet_agent_exporter_build_info{branch="test",goversion="go1.19.3",revision="5a65b5769f8394e2d5b034bf28987eaed9da6840",version="0.1.1"} 1
+# HELP puppet_config Puppet configuration.
+# TYPE puppet_config gauge
+puppet_config{environment="sandbox",server="puppetmaster.example.com"} 1
+# HELP puppet_disabled_lock_info Puppet state of agent disabled lock.
+# TYPE puppet_disabled_lock_info gauge
+puppet_disabled_lock_info{disabled_message=""} 0
+# HELP puppet_last_catalog_version_info The version of the last attempted Puppet catalog.
+# TYPE puppet_last_catalog_version_info gauge
+puppet_last_catalog_version_info 1.670338093e+09
+# HELP puppet_last_run_at_seconds Time of the last Puppet run.
+# TYPE puppet_last_run_at_seconds gauge
+puppet_last_run_at_seconds 1.67033806036635e+09
+# HELP puppet_last_run_duration_seconds Duration of the last Puppet run.
+# TYPE puppet_last_run_duration_seconds gauge
+puppet_last_run_duration_seconds 67.197598991
+# HELP puppet_last_run_report_resources Resources state of the last Puppet run
+# TYPE puppet_last_run_report_resources gauge
+puppet_last_run_report_resources{type="changed"} 1
+puppet_last_run_report_resources{type="corrective_change"} 1
+puppet_last_run_report_resources{type="failed"} 0
+puppet_last_run_report_resources{type="failed_to_restart"} 0
+puppet_last_run_report_resources{type="out_of_sync"} 1
+puppet_last_run_report_resources{type="restarted"} 0
+puppet_last_run_report_resources{type="scheduled"} 0
+puppet_last_run_report_resources{type="skipped"} 0
+puppet_last_run_report_resources{type="total"} 574
+# HELP puppet_last_run_report_time_duration_seconds Resources duration of the last Puppet run.
+# TYPE puppet_last_run_report_time_duration_seconds gauge
+puppet_last_run_report_time_duration_seconds{type="anchor"} 0.001542366
+puppet_last_run_report_time_duration_seconds{type="augeas"} 1.4750735860000002
+puppet_last_run_report_time_duration_seconds{type="catalog_application"} 23.69262781366706
+puppet_last_run_report_time_duration_seconds{type="concat_file"} 0.0019446180000000002
+puppet_last_run_report_time_duration_seconds{type="concat_fragment"} 0.0040750940000000005
+puppet_last_run_report_time_duration_seconds{type="config_retrieval"} 13.081214314326644
+puppet_last_run_report_time_duration_seconds{type="convert_catalog"} 1.7260215114802122
+puppet_last_run_report_time_duration_seconds{type="datacat_collector"} 0.004133176
+puppet_last_run_report_time_duration_seconds{type="datacat_fragment"} 0.0012605899999999998
+puppet_last_run_report_time_duration_seconds{type="exec"} 7.371768186000001
+puppet_last_run_report_time_duration_seconds{type="fact_generation"} 3.916432438418269
+puppet_last_run_report_time_duration_seconds{type="file"} 1.4138048380000006
+puppet_last_run_report_time_duration_seconds{type="file_line"} 0.001381185
+puppet_last_run_report_time_duration_seconds{type="filebucket"} 7.4167e-05
+puppet_last_run_report_time_duration_seconds{type="firewall"} 0.012863523
+puppet_last_run_report_time_duration_seconds{type="firewallchain"} 0.0012854980000000002
+puppet_last_run_report_time_duration_seconds{type="group"} 0.0016724119999999999
+puppet_last_run_report_time_duration_seconds{type="node_retrieval"} 2.8758434895426035
+puppet_last_run_report_time_duration_seconds{type="package"} 4.396066520999999
+puppet_last_run_report_time_duration_seconds{type="plugin_sync"} 21.46335389278829
+puppet_last_run_report_time_duration_seconds{type="selboolean"} 0.02780931
+puppet_last_run_report_time_duration_seconds{type="selmodule"} 2.671842956
+puppet_last_run_report_time_duration_seconds{type="service"} 0.7416738879999999
+puppet_last_run_report_time_duration_seconds{type="sysctl"} 0.0009623979999999999
+puppet_last_run_report_time_duration_seconds{type="transaction_evaluation"} 23.562324536964297
+puppet_last_run_report_time_duration_seconds{type="user"} 0.002918061
+# HELP puppet_last_run_success 1 if the last Puppet run was successful.
+# TYPE puppet_last_run_success gauge
+puppet_last_run_success 1
