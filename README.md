@@ -14,18 +14,49 @@ your environment that is discoverable by Prometheus.
 ### Metrics Exposed
 
 ```
+# HELP puppet_agent_exporter_build_info A metric with a constant '1' value labeled by version, revision, branch, and goversion from which puppet_agent_exporter was built.
+# TYPE puppet_agent_exporter_build_info gauge
+puppet_agent_exporter_build_info{branch="test",goversion="go1.19.3",revision="5a65b5769f8394e2d5b034bf28987eaed9da6840",version="0.1.1"} 1
 # HELP puppet_config Puppet configuration.
 # TYPE puppet_config gauge
-puppet_config{environment="",server="puppet.redacted"} 1
-# HELP puppet_last_catalog_version The version of the last attempted Puppet catalog.
-# TYPE puppet_last_catalog_version gauge
-puppet_last_catalog_version 1.618981114e+09
+puppet_config{environment="sandbox",server="puppetmaster.example.com"} 1
+# HELP puppet_disabled_lock_info Puppet state of agent disabled lock.
+# TYPE puppet_disabled_lock_info gauge
+puppet_disabled_lock_info{disabled_message=""} 0
+# HELP puppet_last_catalog_version_info The version of the last attempted Puppet catalog.
+# TYPE puppet_last_catalog_version_info gauge
+puppet_last_catalog_version_info 1.670338093e+09
 # HELP puppet_last_run_at_seconds Time of the last Puppet run.
 # TYPE puppet_last_run_at_seconds gauge
-puppet_last_run_at_seconds 1.61898111071525e+09
+puppet_last_run_at_seconds 1.67033806036635e+09
 # HELP puppet_last_run_duration_seconds Duration of the last Puppet run.
 # TYPE puppet_last_run_duration_seconds gauge
-puppet_last_run_duration_seconds 15.629926791
+puppet_last_run_duration_seconds 67.197598991
+# HELP puppet_last_run_report_resources Resources state of the last Puppet run
+# TYPE puppet_last_run_report_resources gauge
+puppet_last_run_report_resources{type="changed"} 1
+puppet_last_run_report_resources{type="corrective_change"} 1
+puppet_last_run_report_resources{type="failed"} 0
+puppet_last_run_report_resources{type="failed_to_restart"} 0
+puppet_last_run_report_resources{type="out_of_sync"} 1
+puppet_last_run_report_resources{type="restarted"} 0
+puppet_last_run_report_resources{type="scheduled"} 0
+puppet_last_run_report_resources{type="skipped"} 0
+puppet_last_run_report_resources{type="total"} 574
+# HELP puppet_last_run_report_time_duration_seconds Resources duration of the last Puppet run.
+# TYPE puppet_last_run_report_time_duration_seconds gauge
+puppet_last_run_report_time_duration_seconds{type="catalog_application"} 23.69262781366706
+puppet_last_run_report_time_duration_seconds{type="config_retrieval"} 13.081214314326644
+puppet_last_run_report_time_duration_seconds{type="convert_catalog"} 1.7260215114802122
+puppet_last_run_report_time_duration_seconds{type="exec"} 7.371768186000001
+puppet_last_run_report_time_duration_seconds{type="fact_generation"} 3.916432438418269
+puppet_last_run_report_time_duration_seconds{type="group"} 0.0016724119999999999
+puppet_last_run_report_time_duration_seconds{type="node_retrieval"} 2.8758434895426035
+puppet_last_run_report_time_duration_seconds{type="package"} 4.396066520999999
+puppet_last_run_report_time_duration_seconds{type="plugin_sync"} 21.46335389278829
+puppet_last_run_report_time_duration_seconds{type="service"} 0.7416738879999999
+puppet_last_run_report_time_duration_seconds{type="transaction_evaluation"} 23.562324536964297
+puppet_last_run_report_time_duration_seconds{type="user"} 0.002918061
 # HELP puppet_last_run_success 1 if the last Puppet run was successful.
 # TYPE puppet_last_run_success gauge
 puppet_last_run_success 1
