@@ -32,6 +32,14 @@ puppet_last_run_at_seconds 1.67033806036635e+09
 # HELP puppet_last_run_duration_seconds Duration of the last Puppet run.
 # TYPE puppet_last_run_duration_seconds gauge
 puppet_last_run_duration_seconds 67.197598991
+# HELP puppet_last_run_report_changes Changes of the last Puppet run
+# TYPE puppet_last_run_report_changes gauge
+puppet_last_run_report_changes{type="total"} 0
+# HELP puppet_last_run_report_events Events state of the last Puppet run
+# TYPE puppet_last_run_report_events gauge
+puppet_last_run_report_events{type="failure"} 0
+puppet_last_run_report_events{type="success"} 0
+puppet_last_run_report_events{type="total"} 0
 # HELP puppet_last_run_report_resources Resources state of the last Puppet run
 # TYPE puppet_last_run_report_resources gauge
 puppet_last_run_report_resources{type="changed"} 1

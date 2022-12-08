@@ -41,6 +41,8 @@ func (r runReport) interpret() interpretedReport {
 		RunDuration:           r.totalDuration(),
 		CatalogVersion:        r.ConfigurationVersion,
 		RunReportResources:    r.resourcesMetrics(),
+		RunReportEvents:       r.eventsMetrics(),
+		RunReportChanges:      r.changesMetrics(),
 		RunReportTimeDuration: r.reportTimeDurationMetrics(),
 	}
 	if r.success() {
@@ -90,6 +92,34 @@ func (r runReport) resourcesMetrics() map[string]float64 {
 
 	for resource, value := range resourcesMetrics.Values() {
 		result[resource] = value
+	}
+
+	return result
+}
+
+func (r runReport) eventsMetrics() map[string]float64 {
+	result := make(map[string]float64)
+	eventsMetrics, ok := r.Metrics["events"]
+	if !ok {
+		return result
+	}
+
+	for event, value := range eventsMetrics.Values() {
+		result[event] = value
+	}
+
+	return result
+}
+
+func (r runReport) changesMetrics() map[string]float64 {
+	result := make(map[string]float64)
+	changesMetrics, ok := r.Metrics["changes"]
+	if !ok {
+		return result
+	}
+
+	for change, value := range changesMetrics.Values() {
+		result[change] = value
 	}
 
 	return result

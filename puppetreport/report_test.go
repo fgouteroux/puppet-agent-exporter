@@ -42,6 +42,14 @@ func TestLoadReport(t *testing.T) {
 			"scheduled":         0,
 			"corrective_change": 1,
 		},
+		RunReportEvents: map[string]float64{
+			"total":   0,
+			"success": 0,
+			"failure": 0,
+		},
+		RunReportChanges: map[string]float64{
+			"total": 0,
+		},
 		RunReportTimeDuration: map[string]float64{
 			"plugin_sync":            19.038186447694898,
 			"fact_generation":        3.733549404889345,

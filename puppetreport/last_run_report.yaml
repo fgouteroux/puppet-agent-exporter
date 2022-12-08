@@ -76,6 +76,26 @@ metrics:
     - - catalog_application
       - Catalog application
       - 23.389429319649935
+  changes:
+    name: changes
+    label: Changes
+    values:
+    - - total
+      - Total
+      - 0
+  events:
+    name: events
+    label: Events
+    values:
+    - - total
+      - Total
+      - 0
+    - - failure
+      - Failure
+      - 0
+    - - success
+      - Success
+      - 0
 resource_statuses:
   File[/var/log/unattended-upgrades]:
     failed: false

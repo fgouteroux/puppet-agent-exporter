@@ -1,3 +1,7 @@
+## 0.1.2 / 2022-12-08
+
+* [FEATURE] add report events/changes metrics
+
 ## 0.1.1 / 2022-12-06
 
 * [FEATURE] add windows support

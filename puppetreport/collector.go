@@ -54,6 +54,18 @@ var (
 		[]string{"type"},
 		nil,
 	)
+	runEventsDesc = prometheus.NewDesc(
+		"puppet_last_run_report_events",
+		"Events state of the last Puppet run",
+		[]string{"type"},
+		nil,
+	)
+	runChangesDesc = prometheus.NewDesc(
+		"puppet_last_run_report_changes",
+		"Changes of the last Puppet run",
+		[]string{"type"},
+		nil,
+	)
 	runReportTimeDurationDesc = prometheus.NewDesc(
 		"puppet_last_run_report_time_duration_seconds",
 		"Resources duration of the last Puppet run.",
@@ -80,6 +92,8 @@ func (c Collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- runDurationDesc
 	ch <- runSuccessDesc
 	ch <- runResourcesDesc
+	ch <- runEventsDesc
+	ch <- runChangesDesc
 	ch <- runReportTimeDurationDesc
 	ch <- disabledLockDesc
 }
@@ -115,6 +129,8 @@ type interpretedReport struct {
 	CatalogVersion        float64
 	RunSuccess            float64
 	RunReportResources    map[string]float64
+	RunReportEvents       map[string]float64
+	RunReportChanges      map[string]float64
 	RunReportTimeDuration map[string]float64
 }
 
@@ -126,6 +142,14 @@ func (r interpretedReport) collect(ch chan<- prometheus.Metric) {
 
 	for resource, value := range r.RunReportResources {
 		ch <- prometheus.MustNewConstMetric(runResourcesDesc, prometheus.GaugeValue, value, []string{resource}...)
+	}
+
+	for event, value := range r.RunReportEvents {
+		ch <- prometheus.MustNewConstMetric(runEventsDesc, prometheus.GaugeValue, value, []string{event}...)
+	}
+
+	for change, value := range r.RunReportChanges {
+		ch <- prometheus.MustNewConstMetric(runChangesDesc, prometheus.GaugeValue, value, []string{change}...)
 	}
 
 	for key, value := range r.RunReportTimeDuration {
