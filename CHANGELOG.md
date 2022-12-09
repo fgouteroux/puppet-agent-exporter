@@ -1,3 +1,7 @@
+## 0.1.3 / 2022-12-09
+
+* [FEATURE] support windows service registration 
+
 ## 0.1.2 / 2022-12-08
 
 * [FEATURE] add report events/changes metrics

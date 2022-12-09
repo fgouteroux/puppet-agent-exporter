@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package exporter
 
 import (
 	"net/http"
 	"os"
 
+	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/common/promlog"
 	"github.com/prometheus/common/promlog/flag"
@@ -32,8 +33,13 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
-func main() {
-	// Flag definitions copied from github.com/prometheus/node_exporter
+type Exporter struct {
+	server    *http.Server
+	logger    log.Logger
+	webConfig *web.FlagConfig
+}
+
+func InitExporter() (e *Exporter) {
 	var (
 		metricsPath = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
 		webConfig   = webflag.AddFlags(kingpin.CommandLine, ":9819")
@@ -67,9 +73,17 @@ func main() {
 			</html>`))
 	})
 
-	server := &http.Server{}
-	if err := web.ListenAndServe(server, webConfig, logger); err != nil {
-		level.Error(logger).Log("err", err)
+	return &Exporter{
+		server:    &http.Server{},
+		logger:    logger,
+		webConfig: webConfig,
+	}
+}
+
+// Serve Start the http web server
+func (e *Exporter) Serve() {
+	if err := web.ListenAndServe(e.server, e.webConfig, e.logger); err != nil {
+		level.Error(e.logger).Log("err", err)
 		os.Exit(1)
 	}
 }
