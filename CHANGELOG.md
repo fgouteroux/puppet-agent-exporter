@@ -1,3 +1,8 @@
+## 0.1.4 / 2022-12-12
+
+* [FEATURE] support windows event log
+* [FIX] puppet config file path on windows 
+
 ## 0.1.3 / 2022-12-09
 
 * [FEATURE] support windows service registration 

@@ -25,6 +25,7 @@ import (
 	"github.com/prometheus/exporter-toolkit/web"
 	webflag "github.com/prometheus/exporter-toolkit/web/kingpinflag"
 
+	customlog "github.com/fgouteroux/puppet-agent-exporter/pkg/log"
 	"github.com/fgouteroux/puppet-agent-exporter/puppetconfig"
 	"github.com/fgouteroux/puppet-agent-exporter/puppetreport"
 	"github.com/prometheus/client_golang/prometheus"
@@ -49,7 +50,12 @@ func InitExporter() (e *Exporter) {
 	kingpin.Version(version.Print("puppet-agent-exporter"))
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
-	logger := promlog.New(promlogConfig)
+	logger, err := customlog.InitLogger(promlogConfig)
+	if err != nil {
+		var logger log.Logger
+		level.Error(logger).Log("Failed to init custom logger", err)
+		os.Exit(1)
+	}
 
 	prometheus.MustRegister(puppetconfig.Collector{
 		Logger: logger,
