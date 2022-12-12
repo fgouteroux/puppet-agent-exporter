@@ -21,12 +21,12 @@ func (c Collector) reportPath() string {
 	if c.ReportPath != "" {
 		return c.ReportPath
 	}
-	return "C:\\ProgramData\\PuppetLabs\\puppet\\cache\\state\\last_run_report.yaml"
+	return "C:/ProgramData/PuppetLabs/puppet/cache/state/last_run_report.yaml"
 }
 
 func (c Collector) disabledLockPath() string {
 	if c.DisabledLockPath != "" {
 		return c.DisabledLockPath
 	}
-	return "C:\\ProgramData\\PuppetLabs\\puppet\\cache\\state\\agent_disabled.lock"
+	return "C:/ProgramData/PuppetLabs/puppet/cache/state/agent_disabled.lock"
 }

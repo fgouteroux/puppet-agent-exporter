@@ -21,5 +21,5 @@ func (c Collector) configPath() string {
 	if c.ConfigPath != "" {
 		return c.ConfigPath
 	}
-	return "C:\\ProgramData\\PuppetLabs\\puppet\\puppet.conf"
+	return "C:/ProgramData/PuppetLabs/puppet/etc/puppet.conf"
 }
