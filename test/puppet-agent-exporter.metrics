@@ -123,9 +123,9 @@ puppet_config{environment="sandbox",server="puppetmaster.example.com"} 1
 # HELP puppet_disabled_lock_info Puppet state of agent disabled lock.
 # TYPE puppet_disabled_lock_info gauge
 puppet_disabled_lock_info{disabled_message=""} 0
-# HELP puppet_last_catalog_version_info The version of the last attempted Puppet catalog.
-# TYPE puppet_last_catalog_version_info gauge
-puppet_last_catalog_version_info 1.670338093e+09
+# HELP puppet_last_run_catalog_version The version of the last attempted Puppet catalog.
+# TYPE puppet_last_run_catalog_version gauge
+puppet_last_run_catalog_version 1.670338093e+09
 # HELP puppet_last_run_at_seconds Time of the last Puppet run.
 # TYPE puppet_last_run_at_seconds gauge
 puppet_last_run_at_seconds 1.67033806036635e+09

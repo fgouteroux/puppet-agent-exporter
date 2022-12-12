@@ -22,7 +22,7 @@ import (
 
 var (
 	catalogVersionDesc = prometheus.NewDesc(
-		"puppet_last_catalog_version_info",
+		"puppet_last_run_catalog_version",
 		"The version of the last attempted Puppet catalog.",
 		nil,
 		nil,
