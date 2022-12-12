@@ -2,6 +2,8 @@
 
 * [FEATURE] support windows event log
 * [FIX] puppet config file path on windows 
+* [FIX] rename puppet_last_run_catalog_version metric
+* [FIX] collect metrics only if access to report file
 
 ## 0.1.3 / 2022-12-09
 
