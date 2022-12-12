@@ -99,13 +99,12 @@ func (c Collector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c Collector) Collect(ch chan<- prometheus.Metric) {
-	var result interpretedReport
 	if report, err := load(c.reportPath()); err != nil {
 		level.Error(c.Logger).Log("msg", "Failed to read puppet run report file", "err", err)
 	} else {
-		result = report.interpret()
+		result := report.interpret()
+		result.collect(ch)
 	}
-	result.collect(ch)
 
 	disabledLock, err := processDisabledLock(c.disabledLockPath())
 	if err != nil {
