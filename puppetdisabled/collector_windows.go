@@ -15,11 +15,11 @@
 //go:build windows
 // +build windows
 
-package puppetreport
+package puppetdisabled
 
-func (c Collector) reportPath() string {
-	if c.ReportPath != "" {
-		return c.ReportPath
+func (c Collector) lockPath() string {
+	if c.LockPath != "" {
+		return c.LockPath
 	}
-	return "C:/ProgramData/PuppetLabs/puppet/cache/state/last_run_report.yaml"
+	return "C:/ProgramData/PuppetLabs/puppet/cache/state/agent_disabled.lock"
 }

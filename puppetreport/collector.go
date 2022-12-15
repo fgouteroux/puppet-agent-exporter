@@ -72,18 +72,11 @@ var (
 		[]string{"type"},
 		nil,
 	)
-	disabledLockDesc = prometheus.NewDesc(
-		"puppet_disabled_lock_info",
-		"Puppet state of agent disabled lock.",
-		[]string{"disabled_message"},
-		nil,
-	)
 )
 
 type Collector struct {
-	Logger           log.Logger
-	ReportPath       string
-	DisabledLockPath string
+	Logger     log.Logger
+	ReportPath string
 }
 
 func (c Collector) Describe(ch chan<- *prometheus.Desc) {
@@ -95,31 +88,26 @@ func (c Collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- runEventsDesc
 	ch <- runChangesDesc
 	ch <- runReportTimeDurationDesc
-	ch <- disabledLockDesc
 }
 
 func (c Collector) Collect(ch chan<- prometheus.Metric) {
+	var errVal float64
 	if report, err := load(c.reportPath()); err != nil {
 		level.Error(c.Logger).Log("msg", "Failed to read puppet run report file", "err", err)
+		errVal = 1.0
 	} else {
 		result := report.interpret()
 		result.collect(ch)
 	}
 
-	disabledLock, err := processDisabledLock(c.disabledLockPath())
-	if err != nil {
-		level.Error(c.Logger).Log("msg", "Failed to read puppet agent disabled lock file", "err", err)
-	} else {
-		var disabledLockMetricValue float64
-		if disabledLock.Disabled {
-			disabledLockMetricValue = 1
-		}
-		ch <- prometheus.MustNewConstMetric(disabledLockDesc, prometheus.GaugeValue, disabledLockMetricValue, []string{disabledLock.DisabledMessage}...)
-	}
-}
-
-type Logger interface {
-	Errorw(msg string, keysAndValues ...interface{})
+	ch <- prometheus.MustNewConstMetric(
+		prometheus.NewDesc(
+			"puppet_last_run_scrape_error",
+			"1 if there was an error opening or reading a file, 0 otherwise",
+			nil, nil,
+		),
+		prometheus.GaugeValue, errVal,
+	)
 }
 
 type interpretedReport struct {

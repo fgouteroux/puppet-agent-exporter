@@ -1,3 +1,8 @@
+## 0.1.5 / 2022-12-15
+
+* [FEATURE] add scrape_error metric for each collector
+* [FIX] windows logging to eventlog in service
+
 ## 0.1.4 / 2022-12-12
 
 * [FEATURE] support windows event log

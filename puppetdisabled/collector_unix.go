@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build windows
-// +build windows
+//go:build !windows
+// +build !windows
 
-package puppetreport
+package puppetdisabled
 
-func (c Collector) reportPath() string {
-	if c.ReportPath != "" {
-		return c.ReportPath
+func (c Collector) lockPath() string {
+	if c.LockPath != "" {
+		return c.LockPath
 	}
-	return "C:/ProgramData/PuppetLabs/puppet/cache/state/last_run_report.yaml"
+	return "/opt/puppetlabs/puppet/cache/state/agent_disabled.lock"
 }

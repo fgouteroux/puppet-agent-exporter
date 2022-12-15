@@ -27,6 +27,7 @@ import (
 
 	customlog "github.com/fgouteroux/puppet-agent-exporter/pkg/log"
 	"github.com/fgouteroux/puppet-agent-exporter/puppetconfig"
+	"github.com/fgouteroux/puppet-agent-exporter/puppetdisabled"
 	"github.com/fgouteroux/puppet-agent-exporter/puppetreport"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -61,6 +62,9 @@ func InitExporter() (e *Exporter) {
 		Logger: logger,
 	})
 	prometheus.MustRegister(puppetreport.Collector{
+		Logger: logger,
+	})
+	prometheus.MustRegister(puppetdisabled.Collector{
 		Logger: logger,
 	})
 	prometheus.MustRegister(version.NewCollector("puppet_agent_exporter"))

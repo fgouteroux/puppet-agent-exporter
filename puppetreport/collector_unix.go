@@ -23,10 +23,3 @@ func (c Collector) reportPath() string {
 	}
 	return "/opt/puppetlabs/puppet/cache/state/last_run_report.yaml"
 }
-
-func (c Collector) disabledLockPath() string {
-	if c.DisabledLockPath != "" {
-		return c.DisabledLockPath
-	}
-	return "/opt/puppetlabs/puppet/cache/state/agent_disabled.lock"
-}

@@ -38,17 +38,23 @@ func (c Collector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c Collector) Collect(ch chan<- prometheus.Metric) {
+	var errVal float64
 	config, err := ini.Load(c.configPath())
 	if err != nil {
 		level.Error(c.Logger).Log("msg", "Failed to open puppet config file", "err", err)
-		return
+		errVal = 1.0
+	} else {
+		server := config.Section("main").Key("server").String()
+		environment := config.Section("main").Key("environment").String()
+		ch <- prometheus.MustNewConstMetric(configDesc, prometheus.GaugeValue, 1, server, environment)
 	}
-	server := config.Section("main").Key("server").String()
-	environment := config.Section("main").Key("environment").String()
-	ch <- prometheus.MustNewConstMetric(configDesc, prometheus.GaugeValue, 1, server, environment)
-}
 
-type Logger interface {
-	Errorw(msg string, keysAndValues ...interface{})
-	Panicw(msg string, keysAndValues ...interface{})
+	ch <- prometheus.MustNewConstMetric(
+		prometheus.NewDesc(
+			"puppet_config_scrape_error",
+			"1 if there was an error opening or reading a file, 0 otherwise",
+			nil, nil,
+		),
+		prometheus.GaugeValue, errVal,
+	)
 }
