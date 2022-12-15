@@ -36,7 +36,7 @@ import (
 
 type Exporter struct {
 	server    *http.Server
-	logger    log.Logger
+	Logger    log.Logger
 	webConfig *web.FlagConfig
 }
 
@@ -81,15 +81,15 @@ func InitExporter() (e *Exporter) {
 
 	return &Exporter{
 		server:    &http.Server{},
-		logger:    logger,
+		Logger:    logger,
 		webConfig: webConfig,
 	}
 }
 
 // Serve Start the http web server
 func (e *Exporter) Serve() {
-	if err := web.ListenAndServe(e.server, e.webConfig, e.logger); err != nil {
-		level.Error(e.logger).Log("err", err)
+	if err := web.ListenAndServe(e.server, e.webConfig, e.Logger); err != nil {
+		level.Error(e.Logger).Log("err", err)
 		os.Exit(1)
 	}
 }

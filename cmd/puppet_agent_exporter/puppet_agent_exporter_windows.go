@@ -18,7 +18,9 @@
 package main
 
 import (
-	"log"
+	"os"
+
+	"github.com/go-kit/log/level"
 
 	"github.com/fgouteroux/puppet-agent-exporter/pkg/exporter"
 	win "github.com/fgouteroux/puppet-agent-exporter/pkg/windows"
@@ -30,7 +32,8 @@ func main() {
 
 	isInteractive, err := svc.IsAnInteractiveSession()
 	if err != nil {
-		log.Fatal(err)
+		level.Error(e.Logger).Log("err", err)
+		os.Exit(1)
 	}
 
 	stopCh := make(chan bool)
@@ -38,7 +41,8 @@ func main() {
 		go func() {
 			err = svc.Run("Puppet Agent Exporter", win.NewWindowsExporterService(stopCh))
 			if err != nil {
-				log.Fatalf("Failed to start service: %v", err)
+				level.Error(e.Logger).Log("msg", "Failed to start service", "err", err)
+				os.Exit(1)
 			}
 		}()
 	}
@@ -49,7 +53,7 @@ func main() {
 
 	for {
 		if <-stopCh {
-			log.Printf("Shutting down %s", "Puppet Agent Exporter")
+			level.Info(e.Logger).Log("msg", "Shutting down Puppet Agent Exporter")
 			break
 		}
 	}
