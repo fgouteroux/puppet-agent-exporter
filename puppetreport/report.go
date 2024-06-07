@@ -34,19 +34,17 @@ type runReport struct {
 }
 
 func (r runReport) interpret() interpretedReport {
-	result := interpretedReport{
+	resourcesMetrics := r.resourcesMetrics()
+	return interpretedReport{
 		RunAt:                 asUnixSeconds(r.Time),
 		RunDuration:           r.totalDuration(),
 		CatalogVersion:        r.ConfigurationVersion,
-		RunReportResources:    r.resourcesMetrics(),
+		RunReportResources:    resourcesMetrics,
 		RunReportEvents:       r.eventsMetrics(),
 		RunReportChanges:      r.changesMetrics(),
 		RunReportTimeDuration: r.reportTimeDurationMetrics(),
+		RunSuccess:            r.isSuccess(resourcesMetrics),
 	}
-	if r.success() {
-		result.RunSuccess = 1
-	}
-	return result
 }
 
 func asUnixSeconds(t time.Time) float64 {
@@ -66,19 +64,19 @@ func (r runReport) totalDuration() float64 {
 	return total
 }
 
-func (r runReport) success() bool {
+func (r runReport) isSuccess(resources map[string]float64) float64 {
 	if !r.TransactionCompleted {
-		return false
+		return 0
 	}
-	var failed, ok int
-	for _, item := range r.ResourceStatuses {
-		if item.Failed {
-			failed++
-		} else {
-			ok++
-		}
+
+	failed, _ := resources["failed"]
+	failedToRestart, _ := resources["failed_to_restart"]
+
+	if failed != 0 || failedToRestart != 0 {
+		return 0
 	}
-	return ok > 0 && failed == 0
+
+	return 1
 }
 
 func (r runReport) resourcesMetrics() map[string]float64 {
