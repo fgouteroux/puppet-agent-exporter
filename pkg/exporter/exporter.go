@@ -73,7 +73,7 @@ func InitExporter() (e *Exporter) {
 	level.Info(logger).Log("msg", "Build context", "build_context", version.BuildContext())
 
 	http.Handle(*metricsPath, promhttp.Handler())
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
 		w.Write([]byte(`<html>
 			<head><title>Puppet Agent Exporter</title></head>
 			<body>

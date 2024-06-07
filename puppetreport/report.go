@@ -69,10 +69,7 @@ func (r runReport) isSuccess(resources map[string]float64) float64 {
 		return 0
 	}
 
-	failed, _ := resources["failed"]
-	failedToRestart, _ := resources["failed_to_restart"]
-
-	if failed != 0 || failedToRestart != 0 {
+	if resources["failed"] != 0 || resources["failed_to_restart"] != 0 {
 		return 0
 	}
 
