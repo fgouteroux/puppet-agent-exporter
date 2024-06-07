@@ -1,3 +1,8 @@
+## 0.1.6 / 2024-06-07
+
+* [FEATURE] go 1.21
+* [FEATURE] use metrics resources to check if run is in sucess
+
 ## 0.1.5 / 2022-12-15
 
 * [FEATURE] add scrape_error metric for each collector
