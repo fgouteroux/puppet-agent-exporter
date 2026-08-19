@@ -15,16 +15,19 @@
 package puppetreport
 
 import (
+	"errors"
+	"fmt"
+	"math"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
-	"go.uber.org/multierr"
-	"gopkg.in/yaml.v2"
+	"go.yaml.in/yaml/v2"
 )
 
 type runReport struct {
-	ConfigurationVersion float64                     `yaml:"configuration_version"`
+	ConfigurationVersion catalogVersion              `yaml:"configuration_version"`
 	Time                 time.Time                   `yaml:"time"`
 	TransactionCompleted bool                        `yaml:"transaction_completed"`
 	ReportFormat         int                         `yaml:"report_format"`
@@ -34,47 +37,108 @@ type runReport struct {
 }
 
 func (r runReport) interpret() interpretedReport {
-	result := interpretedReport{
-		RunAt:          asUnixSeconds(r.Time),
-		RunDuration:    r.totalDuration(),
-		CatalogVersion: r.ConfigurationVersion,
+	resourcesMetrics := r.resourcesMetrics()
+	return interpretedReport{
+		RunAt:                 asUnixSeconds(r.Time),
+		RunDuration:           r.totalDuration(),
+		CatalogVersion:        float64(r.ConfigurationVersion),
+		RunReportResources:    resourcesMetrics,
+		RunReportEvents:       r.eventsMetrics(),
+		RunReportChanges:      r.changesMetrics(),
+		RunReportTimeDuration: r.reportTimeDurationMetrics(),
+		RunSuccess:            r.isSuccess(resourcesMetrics),
 	}
-	if r.success() {
-		result.RunSuccess = 1
+}
+
+// catalogVersion holds Puppet's configuration_version. By default Puppet writes
+// the catalog compile timestamp there, but the config_version setting may point
+// at a script returning an arbitrary string. Such a report must still yield all
+// the other run metrics, so a non-numeric version decodes to NaN rather than
+// failing the whole document.
+type catalogVersion float64
+
+func (v *catalogVersion) UnmarshalYAML(unmarshal func(any) error) error {
+	var raw any
+	if err := unmarshal(&raw); err != nil {
+		return err
 	}
-	return result
+
+	switch value := raw.(type) {
+	case nil:
+		*v = catalogVersion(math.NaN())
+	case int:
+		*v = catalogVersion(value)
+	case int64:
+		*v = catalogVersion(value)
+	case float64:
+		*v = catalogVersion(value)
+	case string:
+		parsed, err := strconv.ParseFloat(value, 64)
+		if err != nil {
+			*v = catalogVersion(math.NaN())
+			return nil
+		}
+		*v = catalogVersion(parsed)
+	default:
+		return fmt.Errorf("unsupported configuration_version type %T", raw)
+	}
+	return nil
 }
 
 func asUnixSeconds(t time.Time) float64 {
 	return float64(t.Unix()) + (float64(t.Nanosecond()) / 1e+9)
 }
 
+// totalDuration returns the total run duration, or NaN when the report does not
+// carry one. A negative duration would otherwise be indistinguishable from a
+// real measurement.
 func (r runReport) totalDuration() float64 {
-	timeMetrics, ok := r.Metrics["time"]
+	total, ok := r.metricValues("time")["total"]
 	if !ok {
-		return -1
-	}
-	values := timeMetrics.Values()
-	total, ok := values["total"]
-	if !ok {
-		return -1
+		return math.NaN()
 	}
 	return total
 }
 
-func (r runReport) success() bool {
+func (r runReport) isSuccess(resources map[string]float64) float64 {
 	if !r.TransactionCompleted {
-		return false
+		return 0
 	}
-	var failed, ok int
-	for _, item := range r.ResourceStatuses {
-		if item.Failed {
-			failed++
-		} else {
-			ok++
-		}
+
+	if resources["failed"] != 0 || resources["failed_to_restart"] != 0 {
+		return 0
 	}
-	return ok > 0 && failed == 0
+
+	return 1
+}
+
+// metricValues returns the values of the named puppet metric group, or an empty
+// map when the report does not carry that group.
+func (r runReport) metricValues(name string) map[string]float64 {
+	metrics, ok := r.Metrics[name]
+	if !ok {
+		return make(map[string]float64)
+	}
+	return metrics.Values()
+}
+
+func (r runReport) resourcesMetrics() map[string]float64 {
+	return r.metricValues("resources")
+}
+
+func (r runReport) eventsMetrics() map[string]float64 {
+	return r.metricValues("events")
+}
+
+func (r runReport) changesMetrics() map[string]float64 {
+	return r.metricValues("changes")
+}
+
+func (r runReport) reportTimeDurationMetrics() map[string]float64 {
+	result := r.metricValues("time")
+	// Skip total as it is already reported in RunDuration.
+	delete(result, "total")
+	return result
 }
 
 type resourceStatus struct {
@@ -114,5 +178,50 @@ func load(path string) (runReport, error) {
 	decoder := yaml.NewDecoder(file)
 	var report runReport
 	err = decoder.Decode(&report)
-	return report, multierr.Append(err, file.Close())
+	return report, errors.Join(err, file.Close())
+}
+
+// reportCache memoises the parsed report. Puppet rewrites the report once per
+// run (every 30 minutes by default) while the exporter may be scraped every few
+// seconds, and parsing a report of a few hundred kilobytes costs tens of
+// milliseconds and several megabytes of garbage each time.
+type reportCache struct {
+	mu       sync.Mutex
+	path     string
+	modTime  time.Time
+	size     int64
+	report   interpretedReport
+	hasValue bool
+}
+
+// get returns the interpreted report for path, reusing the previous parse while
+// the file's size and modification time are unchanged.
+func (c *reportCache) get(path string) (interpretedReport, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return interpretedReport{}, err
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.hasValue && c.path == path && c.size == info.Size() && c.modTime.Equal(info.ModTime()) {
+		return c.report, nil
+	}
+
+	report, err := load(path)
+	if err != nil {
+		// Drop the stale entry so a later scrape re-reads the file rather than
+		// serving a report that no longer matches what is on disk.
+		c.hasValue = false
+		return interpretedReport{}, err
+	}
+
+	c.path = path
+	c.size = info.Size()
+	c.modTime = info.ModTime()
+	c.report = report.interpret()
+	c.hasValue = true
+
+	return c.report, nil
 }

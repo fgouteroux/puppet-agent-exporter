@@ -1,0 +1,33 @@
+---
+version: "2"
+linters:
+  enable:
+    - misspell
+    - modernize
+    - revive
+  settings:
+    errcheck:
+      # Used in HTTP handlers, any error is handled by the server itself.
+      exclude-functions:
+        - (net/http.ResponseWriter).Write
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - errcheck
+        path: _test.go
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/fgouteroux/puppet-agent-exporter

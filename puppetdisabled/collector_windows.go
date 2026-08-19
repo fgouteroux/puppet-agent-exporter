@@ -1,0 +1,27 @@
+// Copyright 2021 RetailNext, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+//go:build windows
+
+package puppetdisabled
+
+// DefaultLockPath is the default location of the puppet agent disabled lock file on windows.
+const DefaultLockPath = "C:/ProgramData/PuppetLabs/puppet/cache/state/agent_disabled.lock"
+
+func (c *Collector) lockPath() string {
+	if c.LockPath != "" {
+		return c.LockPath
+	}
+	return DefaultLockPath
+}

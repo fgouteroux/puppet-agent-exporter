@@ -14,11 +14,15 @@
 
 package puppetreport
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"log/slog"
+
+	"github.com/prometheus/client_golang/prometheus"
+)
 
 var (
 	catalogVersionDesc = prometheus.NewDesc(
-		"puppet_last_catalog_version",
+		"puppet_last_run_catalog_version",
 		"The version of the last attempted Puppet catalog.",
 		nil,
 		nil,
@@ -44,46 +48,78 @@ var (
 		nil,
 		nil,
 	)
+	runResourcesDesc = prometheus.NewDesc(
+		"puppet_last_run_report_resources",
+		"Resources state of the last Puppet run",
+		[]string{"type"},
+		nil,
+	)
+	runEventsDesc = prometheus.NewDesc(
+		"puppet_last_run_report_events",
+		"Events state of the last Puppet run",
+		[]string{"type"},
+		nil,
+	)
+	runChangesDesc = prometheus.NewDesc(
+		"puppet_last_run_report_changes",
+		"Changes of the last Puppet run",
+		[]string{"type"},
+		nil,
+	)
+	runReportTimeDurationDesc = prometheus.NewDesc(
+		"puppet_last_run_report_time_duration_seconds",
+		"Resources duration of the last Puppet run.",
+		[]string{"type"},
+		nil,
+	)
+	scrapeErrorDesc = prometheus.NewDesc(
+		"puppet_last_run_scrape_error",
+		"1 if there was an error opening or reading a file, 0 otherwise",
+		nil,
+		nil,
+	)
 )
 
 type Collector struct {
-	Logger     Logger
+	Logger     *slog.Logger
 	ReportPath string
+
+	cache reportCache
 }
 
-func (c Collector) Describe(ch chan<- *prometheus.Desc) {
+func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- catalogVersionDesc
 	ch <- runAtDesc
 	ch <- runDurationDesc
 	ch <- runSuccessDesc
+	ch <- runResourcesDesc
+	ch <- runEventsDesc
+	ch <- runChangesDesc
+	ch <- runReportTimeDurationDesc
+	ch <- scrapeErrorDesc
 }
 
-func (c Collector) Collect(ch chan<- prometheus.Metric) {
-	var result interpretedReport
-	if report, err := load(c.reportPath()); err != nil {
-		c.Logger.Errorw("puppet_read_run_report_failed", "err", err)
+func (c *Collector) Collect(ch chan<- prometheus.Metric) {
+	var errVal float64
+	if report, err := c.cache.get(c.reportPath()); err != nil {
+		c.Logger.Error("Failed to read puppet run report file", "err", err)
+		errVal = 1.0
 	} else {
-		result = report.interpret()
+		report.collect(ch)
 	}
-	result.collect(ch)
-}
 
-func (c Collector) reportPath() string {
-	if c.ReportPath != "" {
-		return c.ReportPath
-	}
-	return "/opt/puppetlabs/puppet/cache/state/last_run_report.yaml"
-}
-
-type Logger interface {
-	Errorw(msg string, keysAndValues ...interface{})
+	ch <- prometheus.MustNewConstMetric(scrapeErrorDesc, prometheus.GaugeValue, errVal)
 }
 
 type interpretedReport struct {
-	RunAt          float64
-	RunDuration    float64
-	CatalogVersion float64
-	RunSuccess     float64
+	RunAt                 float64
+	RunDuration           float64
+	CatalogVersion        float64
+	RunSuccess            float64
+	RunReportResources    map[string]float64
+	RunReportEvents       map[string]float64
+	RunReportChanges      map[string]float64
+	RunReportTimeDuration map[string]float64
 }
 
 func (r interpretedReport) collect(ch chan<- prometheus.Metric) {
@@ -91,4 +127,21 @@ func (r interpretedReport) collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(runAtDesc, prometheus.GaugeValue, r.RunAt)
 	ch <- prometheus.MustNewConstMetric(runDurationDesc, prometheus.GaugeValue, r.RunDuration)
 	ch <- prometheus.MustNewConstMetric(runSuccessDesc, prometheus.GaugeValue, r.RunSuccess)
+
+	for resource, value := range r.RunReportResources {
+		ch <- prometheus.MustNewConstMetric(runResourcesDesc, prometheus.GaugeValue, value, []string{resource}...)
+	}
+
+	for event, value := range r.RunReportEvents {
+		ch <- prometheus.MustNewConstMetric(runEventsDesc, prometheus.GaugeValue, value, []string{event}...)
+	}
+
+	for change, value := range r.RunReportChanges {
+		ch <- prometheus.MustNewConstMetric(runChangesDesc, prometheus.GaugeValue, value, []string{change}...)
+	}
+
+	for key, value := range r.RunReportTimeDuration {
+		ch <- prometheus.MustNewConstMetric(runReportTimeDurationDesc, prometheus.GaugeValue, value, []string{key}...)
+	}
+
 }

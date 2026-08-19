@@ -1,1 +1,6 @@
 /dist
+.build
+bin/puppet-agent-exporter*
+puppet-agent-exporter
+*.tar.gz
+*.test
