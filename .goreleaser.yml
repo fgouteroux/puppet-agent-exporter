@@ -1,10 +1,15 @@
 ---
+version: 2
 project_name: puppet-agent-exporter
+
 before:
   hooks:
-    - go mod tidy
+    - go mod download
+
 builds:
-  - binary: puppet-agent-exporter
+  - id: puppet-agent-exporter
+    binary: puppet-agent-exporter
+    main: ./cmd/puppet_agent_exporter
     env:
       - CGO_ENABLED=0
     flags:
@@ -16,30 +21,86 @@ builds:
     goarch:
       - amd64
       - arm64
+      - "386"
+    ignore:
+      # darwin dropped 32-bit, and there is no 32-bit arm target to build for.
+      - goos: darwin
+        goarch: "386"
     ldflags:
-      # Keep in sync with .promu.yml so that `--version` reports the same
-      # information no matter which toolchain produced the binary.
       - -s -w
-      - -X github.com/prometheus/common/version.Version={{.Version}}
-      - -X github.com/prometheus/common/version.Revision={{.FullCommit}}
-      - -X github.com/prometheus/common/version.Branch={{.Branch}}
+      - -X github.com/prometheus/common/version.Version={{ .Version }}
+      - -X github.com/prometheus/common/version.Revision={{ .FullCommit }}
+      - -X github.com/prometheus/common/version.Branch={{ .Branch }}
       - -X github.com/prometheus/common/version.BuildUser=goreleaser
-      - -X github.com/prometheus/common/version.BuildDate={{.Date}}
+      - -X github.com/prometheus/common/version.BuildDate={{ .Date }}
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+archives:
+  - id: default
+    # Keeps the artifact naming the previous promu-based releases used.
+    name_template: "{{ .ProjectName }}-{{ .Version }}.{{ .Os }}-{{ .Arch }}"
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    files:
+      - LICENSE
+      - README.md
+      - CHANGELOG.md
+
 nfpms:
-  - package_name: puppet-agent-exporter
+  - id: packages
+    package_name: puppet-agent-exporter
+    file_name_template: "{{ .ConventionalFileName }}"
     formats:
       - deb
-    license: Apache 2.0
+      - rpm
+    vendor: fgouteroux
     homepage: https://github.com/fgouteroux/puppet-agent-exporter
     maintainer: François Gouteroux <francois.gouteroux@gmail.com>
-    description: Prometheus Exporter for Puppet Agent
+    description: Prometheus exporter for the Puppet Agent.
+    license: Apache-2.0
+    section: net
+    bindir: /usr/bin
+    contents:
+      - src: packaging/systemd/puppet-agent-exporter.service
+        dst: /lib/systemd/system/puppet-agent-exporter.service
+      - src: packaging/default/puppet-agent-exporter
+        dst: /etc/default/puppet-agent-exporter
+        type: "config|noreplace"
+    overrides:
+      rpm:
+        contents:
+          - src: packaging/systemd/puppet-agent-exporter.service
+            dst: /usr/lib/systemd/system/puppet-agent-exporter.service
+          - src: packaging/default/puppet-agent-exporter
+            dst: /etc/sysconfig/puppet-agent-exporter
+            type: "config|noreplace"
+    scripts:
+      postinstall: packaging/scripts/postinstall.sh
+      preremove: packaging/scripts/preremove.sh
+      postremove: packaging/scripts/postremove.sh
+
 checksum:
-  name_template: 'checksums.txt'
+  name_template: checksums.txt
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-snapshot"
+
 changelog:
   sort: asc
   filters:
     exclude:
       - '^chore\(ci\):'
       - '^chore\(deps\):'
+      - '^doc:'
       - '^docs:'
       - '^test:'
+
+release:
+  github:
+    owner: fgouteroux
+    name: puppet-agent-exporter
+  prerelease: auto

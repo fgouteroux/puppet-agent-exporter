@@ -1,3 +1,10 @@
+## Unreleased
+
+* [CHANGE] replace promu/promci with GoReleaser for building and releasing
+* [CHANGE] drop Makefile.common in favour of a self-contained Makefile
+* [FEATURE] publish deb and rpm packages with a systemd unit
+* [FEATURE] build linux/arm64 and darwin/arm64 artefacts
+
 ## 0.1.7 / 2026-08-19
 
 * [CHANGE] go 1.26
