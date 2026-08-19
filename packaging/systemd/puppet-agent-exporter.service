@@ -1,0 +1,37 @@
+[Unit]
+Description=Prometheus exporter for the Puppet Agent
+Documentation=https://github.com/fgouteroux/puppet-agent-exporter
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Runs as root on purpose: the puppet agent state files this exporter reads
+# (last_run_report.yaml, agent_disabled.lock) are only readable by root.
+User=root
+Group=root
+EnvironmentFile=-/etc/default/puppet-agent-exporter
+EnvironmentFile=-/etc/sysconfig/puppet-agent-exporter
+ExecStart=/usr/bin/puppet-agent-exporter $ARGS
+Restart=on-failure
+RestartSec=5s
+
+# The exporter only ever reads a handful of files and serves HTTP, so it can be
+# confined tightly even while running as root.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+RestrictRealtime=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

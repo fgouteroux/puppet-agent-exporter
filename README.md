@@ -124,6 +124,32 @@ Alerting on a non-default environment being set helps catch operator error,
 for example when a node is used to test changes from a branch environment
 but forgotten about after that branch is merged.
 
+## Installation
+
+Each release publishes binaries for linux, darwin and windows (amd64, arm64 and
+386 where applicable), plus `.deb` and `.rpm` packages on the
+[releases page](https://github.com/fgouteroux/puppet-agent-exporter/releases).
+
+The packages install the binary to `/usr/bin/puppet-agent-exporter`, a systemd
+unit, and a defaults file holding the command line arguments:
+
+| | deb | rpm |
+|---|---|---|
+| unit | `/lib/systemd/system/` | `/usr/lib/systemd/system/` |
+| arguments | `/etc/default/puppet-agent-exporter` | `/etc/sysconfig/puppet-agent-exporter` |
+
+```
+systemctl enable --now puppet-agent-exporter
+```
+
+The unit runs as root on purpose: the puppet agent state files it reads
+(`last_run_report.yaml`, `agent_disabled.lock`) are only readable by root. It is
+confined with the usual systemd hardening options in exchange.
+
+To build from source, `make build` cross-compiles every target and produces the
+packages under `dist/` without publishing anything. It needs
+[GoReleaser](https://goreleaser.com).
+
 ## Configuration
 
 All flags are optional. The file paths default to the standard Puppet Agent
@@ -163,14 +189,11 @@ internally.
 
     (This isn't really meant to be a library.)
 
-*   We may add a systemd unit to the packaging at some point.
-
 *   We probably won't make breaking changes to the arguments without warning.
 
 ### Areas needing improvement
 
 *   General code hygiene and refactoring
-*   Better packaging (supporting RPM distros, including a systemd unit, etc...)
 
 ## Contributing
 

@@ -11,19 +11,70 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Needs to be defined before including Makefile.common to auto-generate targets
-DOCKER_ARCHS ?= amd64 armv7 arm64 ppc64le s390x
-DOCKER_IMAGE_NAME ?= puppet-agent-exporter
+GO         ?= go
+GORELEASER ?= goreleaser
 
-all:: vet checkmetrics common-all
+GOLANGCI_LINT_VERSION ?= v2.12.2
+GOLANGCI_LINT         ?= golangci-lint
 
-include Makefile.common
+# Whenever this is updated, .github/workflows/go.yml should also be updated.
+PROMETHEUS_VERSION ?= 3.14.0
+PROMTOOL           ?= /tmp/prometheus-$(PROMETHEUS_VERSION).linux-amd64/promtool
 
-PROMETHEUS_VERSION=3.14.0
-PROMTOOL ?= /tmp/prometheus-$(PROMETHEUS_VERSION).linux-amd64/promtool
+.PHONY: all
+all: style vet lint test checkmetrics build
+
+.PHONY: style
+style:
+	@echo ">> checking code style"
+	@fmtRes=$$($(GO) fmt ./...); \
+	if [ -n "$${fmtRes}" ]; then \
+		echo "gofmt checking failed:"; echo "$${fmtRes}"; echo; \
+		exit 1; \
+	fi
+
+.PHONY: vet
+vet:
+	@echo ">> vetting code"
+	$(GO) vet ./...
+	GOOS=windows $(GO) vet ./...
+
+.PHONY: lint
+lint:
+	@echo ">> running golangci-lint"
+	$(GOLANGCI_LINT) run ./...
+	GOOS=windows $(GOLANGCI_LINT) run ./...
+
+.PHONY: test
+test:
+	@echo ">> running tests"
+	$(GO) test -race ./...
 
 .PHONY: checkmetrics
-checkmetrics:
+checkmetrics: $(PROMTOOL)
 	@echo ">> checking metrics for correctness"
-	if ! test -x $(PROMTOOL); then curl -sL -o - https://github.com/prometheus/prometheus/releases/download/v$(PROMETHEUS_VERSION)/prometheus-$(PROMETHEUS_VERSION).linux-amd64.tar.gz | tar -C /tmp -xzf - prometheus-$(PROMETHEUS_VERSION).linux-amd64/promtool; fi
 	for file in test/*.metrics; do $(PROMTOOL) check metrics < $$file || exit 1; done
+
+$(PROMTOOL):
+	curl -sL -o - https://github.com/prometheus/prometheus/releases/download/v$(PROMETHEUS_VERSION)/prometheus-$(PROMETHEUS_VERSION).linux-amd64.tar.gz \
+		| tar -C /tmp -xzf - prometheus-$(PROMETHEUS_VERSION).linux-amd64/promtool
+
+# Cross-compiles every release target and builds the packages, without
+# publishing anything. This is what CI runs on pull requests.
+.PHONY: build
+build:
+	@echo ">> building release artefacts (snapshot)"
+	$(GORELEASER) release --snapshot --clean --skip=publish
+
+.PHONY: tidy
+tidy:
+	$(GO) mod tidy
+	@git diff --exit-code -- go.sum go.mod
+
+.PHONY: print-golangci-lint-version
+print-golangci-lint-version:
+	@echo $(GOLANGCI_LINT_VERSION)
+
+.PHONY: clean
+clean:
+	rm -rf dist
