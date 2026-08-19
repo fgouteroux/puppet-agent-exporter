@@ -1,3 +1,11 @@
+## 0.1.7 / 2026-08-19
+
+* [CHANGE] go 1.26
+* [CHANGE] update all go dependencies
+* [CHANGE] replace go-kit/log with the standard library log/slog
+* [FIX] windows service no longer exits on an unexpected control request
+* [FIX] do not log through a nil logger when logger initialisation fails
+
 ## 0.1.6 / 2024-06-07
 
 * [FEATURE] go 1.21

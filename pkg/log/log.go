@@ -13,15 +13,16 @@
 // limitations under the License.
 
 //go:build !windows
-// +build !windows
 
 package log
 
 import (
-	"github.com/go-kit/log"
-	"github.com/prometheus/common/promlog"
+	"log/slog"
+
+	"github.com/prometheus/common/promslog"
 )
 
-func InitLogger(cfg *promlog.Config) (log.Logger, error) {
-	return promlog.New(cfg), nil
+// InitLogger returns a logger writing to standard error.
+func InitLogger(cfg *promslog.Config) (*slog.Logger, error) {
+	return promslog.New(cfg), nil
 }

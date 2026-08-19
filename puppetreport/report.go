@@ -15,12 +15,12 @@
 package puppetreport
 
 import (
+	"errors"
 	"os"
 	"strconv"
 	"time"
 
-	"go.uber.org/multierr"
-	"gopkg.in/yaml.v2"
+	"go.yaml.in/yaml/v2"
 )
 
 type runReport struct {
@@ -76,63 +76,32 @@ func (r runReport) isSuccess(resources map[string]float64) float64 {
 	return 1
 }
 
-func (r runReport) resourcesMetrics() map[string]float64 {
-	result := make(map[string]float64)
-	resourcesMetrics, ok := r.Metrics["resources"]
+// metricValues returns the values of the named puppet metric group, or an empty
+// map when the report does not carry that group.
+func (r runReport) metricValues(name string) map[string]float64 {
+	metrics, ok := r.Metrics[name]
 	if !ok {
-		return result
+		return make(map[string]float64)
 	}
+	return metrics.Values()
+}
 
-	for resource, value := range resourcesMetrics.Values() {
-		result[resource] = value
-	}
-
-	return result
+func (r runReport) resourcesMetrics() map[string]float64 {
+	return r.metricValues("resources")
 }
 
 func (r runReport) eventsMetrics() map[string]float64 {
-	result := make(map[string]float64)
-	eventsMetrics, ok := r.Metrics["events"]
-	if !ok {
-		return result
-	}
-
-	for event, value := range eventsMetrics.Values() {
-		result[event] = value
-	}
-
-	return result
+	return r.metricValues("events")
 }
 
 func (r runReport) changesMetrics() map[string]float64 {
-	result := make(map[string]float64)
-	changesMetrics, ok := r.Metrics["changes"]
-	if !ok {
-		return result
-	}
-
-	for change, value := range changesMetrics.Values() {
-		result[change] = value
-	}
-
-	return result
+	return r.metricValues("changes")
 }
 
 func (r runReport) reportTimeDurationMetrics() map[string]float64 {
-	result := make(map[string]float64)
-	reportTimeDurationMetrics, ok := r.Metrics["time"]
-	if !ok {
-		return result
-	}
-
-	for resource, value := range reportTimeDurationMetrics.Values() {
-		// Skip total as reported in RunDuration
-		if resource == "total" {
-			continue
-		}
-		result[resource] = value
-	}
-
+	result := r.metricValues("time")
+	// Skip total as it is already reported in RunDuration.
+	delete(result, "total")
 	return result
 }
 
@@ -173,5 +142,5 @@ func load(path string) (runReport, error) {
 	decoder := yaml.NewDecoder(file)
 	var report runReport
 	err = decoder.Decode(&report)
-	return report, multierr.Append(err, file.Close())
+	return report, errors.Join(err, file.Close())
 }

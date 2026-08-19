@@ -13,34 +13,24 @@
 // limitations under the License.
 
 //go:build windows
-// +build windows
 
 package log
 
 import (
+	"context"
+	"log/slog"
 	"runtime"
 	"strings"
 
-	"github.com/prometheus/common/promlog"
-
-	"github.com/go-kit/log/level"
-
-	"github.com/go-kit/log"
+	"github.com/prometheus/common/promslog"
 	"golang.org/x/sys/windows/svc"
 	el "golang.org/x/sys/windows/svc/eventlog"
 )
 
 const ServiceName = "Puppet Agent Exporter"
 
-var levelMap = map[string]level.Option{
-	"error": level.AllowError(),
-	"warn":  level.AllowWarn(),
-	"info":  level.AllowInfo(),
-	"debug": level.AllowDebug(),
-}
-
 // IsWindowsService returns whether the current process is running as a Windows
-// Service. On non-Windows platforms, this always returns false.
+// Service.
 func IsWindowsService() bool {
 	isService, err := svc.IsWindowsService()
 	if err != nil {
@@ -49,16 +39,17 @@ func IsWindowsService() bool {
 	return isService
 }
 
-// InitLogger returns Windows Event Logger if running as a service under windows
-func InitLogger(cfg *promlog.Config) (log.Logger, error) {
+// InitLogger returns the Windows Event Logger if running as a service under
+// windows, and a regular stderr logger otherwise.
+func InitLogger(cfg *promslog.Config) (*slog.Logger, error) {
 	if IsWindowsService() {
 		return NewWindowsEventLogger(cfg)
-	} else {
-		return promlog.New(cfg), nil
 	}
+	return promslog.New(cfg), nil
 }
 
-func NewWindowsEventLogger(cfg *promlog.Config) (log.Logger, error) {
+// NewWindowsEventLogger returns a logger writing to the Windows event log.
+func NewWindowsEventLogger(cfg *promslog.Config) (*slog.Logger, error) {
 	// Setup the log in windows events
 	err := el.InstallAsEventCreate(ServiceName, el.Error|el.Info|el.Warning)
 
@@ -76,75 +67,78 @@ func NewWindowsEventLogger(cfg *promlog.Config) (log.Logger, error) {
 		l.Close()
 	})
 
-	// These are setup to be writers for each Windows log level
-	// Setup this way so we can utilize all the benefits of logformatter
-	infoLogger := newWinLogWrapper(cfg.Format.String(), func(p []byte) error {
-		return il.Info(1, string(p))
-	})
-	warningLogger := newWinLogWrapper(cfg.Format.String(), func(p []byte) error {
-		return il.Warning(1, string(p))
-	})
-
-	errorLogger := newWinLogWrapper(cfg.Format.String(), func(p []byte) error {
-		return il.Error(1, string(p))
-	})
-
-	wl := &winLogger{
-		errorLogger:   errorLogger,
-		infoLogger:    infoLogger,
-		warningLogger: warningLogger,
+	// One handler per Windows event log level, so that the promslog formatting
+	// is reused: the event log API exposes a distinct call per level while an
+	// io.Writer only ever sees the formatted bytes.
+	newHandler := func(write func(p []byte) error) slog.Handler {
+		handlerCfg := *cfg
+		handlerCfg.Writer = &winLogWriter{writer: write}
+		return promslog.New(&handlerCfg).Handler()
 	}
-	return level.NewFilter(wl, levelMap[cfg.Level.String()]), nil
+
+	return slog.New(&winLogHandler{
+		infoHandler: newHandler(func(p []byte) error {
+			return il.Info(1, string(p))
+		}),
+		warningHandler: newHandler(func(p []byte) error {
+			return il.Warning(1, string(p))
+		}),
+		errorHandler: newHandler(func(p []byte) error {
+			return il.Error(1, string(p))
+		}),
+	}), nil
 }
 
-// Looks through the key value pairs in the log for level and extract the value
-func getLevel(keyvals ...interface{}) level.Value {
-	for i := 0; i < len(keyvals); i++ {
-		if vo, ok := keyvals[i].(level.Value); ok {
-			return vo
-		}
-	}
-	return nil
+// winLogHandler dispatches records to the handler matching their level.
+type winLogHandler struct {
+	infoHandler    slog.Handler
+	warningHandler slog.Handler
+	errorHandler   slog.Handler
 }
 
-func newWinLogWrapper(format string, write func(p []byte) error) log.Logger {
-	infoWriter := &winLogWriter{writer: write}
-	infoLogger := log.NewLogfmtLogger(infoWriter)
-	if format == "json" {
-		infoLogger = log.NewJSONLogger(infoWriter)
-	}
-	return infoLogger
-}
-
-type winLogger struct {
-	errorLogger   log.Logger
-	infoLogger    log.Logger
-	warningLogger log.Logger
-}
-
-func (w *winLogger) Log(keyvals ...interface{}) error {
-	lvl := getLevel(keyvals...)
-	// 3 different loggers are used so that agent can utilize the formatting features of go-kit logging
-	// if agent did not use this then the windows logger uses different function calls for different levels
-	// this is paired with the fact that the io.Writer interface only gives a byte array.
-	switch lvl {
-	case level.DebugValue():
-		return w.infoLogger.Log(keyvals...)
-	case level.InfoValue():
-		return w.infoLogger.Log(keyvals...)
-	case level.WarnValue():
-		return w.warningLogger.Log(keyvals...)
-	case level.ErrorValue():
-		return w.errorLogger.Log(keyvals...)
+func (w *winLogHandler) handlerFor(level slog.Level) slog.Handler {
+	switch {
+	case level >= slog.LevelError:
+		return w.errorHandler
+	case level >= slog.LevelWarn:
+		return w.warningHandler
 	default:
-		return w.infoLogger.Log(keyvals...)
+		return w.infoHandler
 	}
 }
 
+func (w *winLogHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	return w.handlerFor(level).Enabled(ctx, level)
+}
+
+func (w *winLogHandler) Handle(ctx context.Context, r slog.Record) error {
+	return w.handlerFor(r.Level).Handle(ctx, r)
+}
+
+func (w *winLogHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return &winLogHandler{
+		infoHandler:    w.infoHandler.WithAttrs(attrs),
+		warningHandler: w.warningHandler.WithAttrs(attrs),
+		errorHandler:   w.errorHandler.WithAttrs(attrs),
+	}
+}
+
+func (w *winLogHandler) WithGroup(name string) slog.Handler {
+	return &winLogHandler{
+		infoHandler:    w.infoHandler.WithGroup(name),
+		warningHandler: w.warningHandler.WithGroup(name),
+		errorHandler:   w.errorHandler.WithGroup(name),
+	}
+}
+
+// winLogWriter turns the formatted log line into an event log write.
 type winLogWriter struct {
 	writer func(p []byte) error
 }
 
 func (i *winLogWriter) Write(p []byte) (n int, err error) {
-	return len(p), i.writer(p)
+	if err := i.writer(p); err != nil {
+		return 0, err
+	}
+	return len(p), nil
 }

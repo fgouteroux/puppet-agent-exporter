@@ -13,49 +13,39 @@
 // limitations under the License.
 
 //go:build windows
-// +build windows
 
 package main
 
 import (
 	"os"
 
-	"github.com/go-kit/log/level"
+	"golang.org/x/sys/windows/svc"
 
 	"github.com/fgouteroux/puppet-agent-exporter/pkg/exporter"
 	win "github.com/fgouteroux/puppet-agent-exporter/pkg/windows"
-	"golang.org/x/sys/windows/svc"
 )
 
 func main() {
 	e := exporter.InitExporter()
 
-	isInteractive, err := svc.IsAnInteractiveSession()
+	isWindowsService, err := svc.IsWindowsService()
 	if err != nil {
-		level.Error(e.Logger).Log("err", err)
+		e.Logger.Error("Failed to determine if running as a Windows service", "err", err)
 		os.Exit(1)
 	}
 
 	stopCh := make(chan bool)
-	if !isInteractive {
+	if isWindowsService {
 		go func() {
-			err = svc.Run("Puppet Agent Exporter", win.NewWindowsExporterService(stopCh))
-			if err != nil {
-				level.Error(e.Logger).Log("msg", "Failed to start service", "err", err)
+			if err := svc.Run("Puppet Agent Exporter", win.NewExporterService(stopCh, e.Logger)); err != nil {
+				e.Logger.Error("Failed to start service", "err", err)
 				os.Exit(1)
 			}
 		}()
 	}
 
-	go func() {
-		e.Serve()
-	}()
+	go e.Serve()
 
-	for {
-		if <-stopCh {
-			level.Info(e.Logger).Log("msg", "Shutting down Puppet Agent Exporter")
-			break
-		}
-	}
-
+	<-stopCh
+	e.Logger.Info("Shutting down Puppet Agent Exporter")
 }

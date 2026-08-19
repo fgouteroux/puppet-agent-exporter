@@ -19,7 +19,7 @@ all:: vet checkmetrics common-all
 
 include Makefile.common
 
-PROMETHEUS_VERSION=2.39.1
+PROMETHEUS_VERSION=3.14.0
 PROMTOOL ?= /tmp/prometheus-$(PROMETHEUS_VERSION).linux-amd64/promtool
 
 .PHONY: checkmetrics

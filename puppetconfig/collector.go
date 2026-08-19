@@ -15,8 +15,8 @@
 package puppetconfig
 
 import (
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
+	"log/slog"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/ini.v1"
 )
@@ -29,7 +29,7 @@ var configDesc = prometheus.NewDesc(
 )
 
 type Collector struct {
-	Logger     log.Logger
+	Logger     *slog.Logger
 	ConfigPath string
 }
 
@@ -41,7 +41,7 @@ func (c Collector) Collect(ch chan<- prometheus.Metric) {
 	var errVal float64
 	config, err := ini.Load(c.configPath())
 	if err != nil {
-		level.Error(c.Logger).Log("msg", "Failed to open puppet config file", "err", err)
+		c.Logger.Error("Failed to open puppet config file", "err", err)
 		errVal = 1.0
 	} else {
 		server := config.Section("main").Key("server").String()

@@ -13,45 +13,42 @@
 // limitations under the License.
 
 //go:build windows
-// +build windows
 
 package windows
 
 import (
-	"fmt"
-	"log"
+	"log/slog"
 
 	"golang.org/x/sys/windows/svc"
 )
 
-// WindowsExporterService channel for service stop
-type WindowsExporterService struct {
+// ExporterService handles the Windows service control requests and signals the
+// exporter to stop.
+type ExporterService struct {
 	stopCh chan<- bool
+	logger *slog.Logger
 }
 
-// NewWindowsExporterService return new WindowsExporterService
-func NewWindowsExporterService(ch chan<- bool) *WindowsExporterService {
-	return &WindowsExporterService{stopCh: ch}
+// NewExporterService returns a new ExporterService.
+func NewExporterService(ch chan<- bool, logger *slog.Logger) *ExporterService {
+	return &ExporterService{stopCh: ch, logger: logger}
 }
 
-// Execute run programm directly or for service
-func (s *WindowsExporterService) Execute(args []string, r <-chan svc.ChangeRequest, changes chan<- svc.Status) (ssec bool, errno uint32) {
+// Execute runs the service control loop until a stop or shutdown is requested.
+func (s *ExporterService) Execute(_ []string, r <-chan svc.ChangeRequest, changes chan<- svc.Status) (ssec bool, errno uint32) {
 	const cmdsAccepted = svc.AcceptStop | svc.AcceptShutdown
 	changes <- svc.Status{State: svc.StartPending}
 	changes <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
 loop:
-	for {
-		select {
-		case c := <-r:
-			switch c.Cmd {
-			case svc.Interrogate:
-				changes <- c.CurrentStatus
-			case svc.Stop, svc.Shutdown:
-				s.stopCh <- true
-				break loop
-			default:
-				log.Fatalf(fmt.Sprintf("unexpected control request #%d", c))
-			}
+	for c := range r {
+		switch c.Cmd {
+		case svc.Interrogate:
+			changes <- c.CurrentStatus
+		case svc.Stop, svc.Shutdown:
+			s.stopCh <- true
+			break loop
+		default:
+			s.logger.Warn("Unexpected service control request", "cmd", c.Cmd)
 		}
 	}
 	changes <- svc.Status{State: svc.StopPending}

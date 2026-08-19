@@ -3,6 +3,12 @@ name: CI
 on:
   pull_request:
   push:
+    branches: [master, 'release-*']
+    tags: ['v*']
+
+permissions:
+  contents: read
+
 jobs:
   test:
     name: Test
@@ -10,50 +16,36 @@ jobs:
     # Whenever the Go version is updated here, .promu.yml
     # should also be updated.
     container:
-      image: quay.io/prometheus/golang-builder:1.21-base
+      image: quay.io/prometheus/golang-builder:1.26-base
     steps:
-      - uses: actions/checkout@v3
-      - uses: prometheus/promci@v0.1.0
-      - uses: ./.github/promci/actions/setup_environment
-      - run: make
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: prometheus/promci-setup@3e5cd31b34b8ae19efa8f071c5e3cdb44884a7f8 # v0.2.1
+      - run: make SKIP_GOLANGCI_LINT=1
+      - run: git diff --exit-code
 
   build:
     name: Build
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        thread: [ 0, 1, 2 ]
+        thread: [0, 1, 2]
     steps:
-      - uses: actions/checkout@v3
-      - uses: prometheus/promci@v0.1.0
-      - uses: ./.github/promci/actions/build
+      - uses: prometheus/promci/build@370e8c15dcec50043cbe66f2f34633d9efc0a190 # v0.9.0
         with:
           parallelism: 3
           thread: ${{ matrix.thread }}
 
-  golangci:
-    name: golangci-lint
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-      - name: Install Go
-        uses: actions/setup-go@v3
-        with:
-          go-version: '1.21'
-      - name: Lint
-        uses: golangci/golangci-lint-action@v3.2.0
-        with:
-          version: v1.59.0
-
   publish_release:
-    name: Publish release arfefacts
+    name: Publish release artefacts
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
     needs: [test, build]
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     steps:
-      - uses: actions/checkout@v3
-      - uses: prometheus/promci@v0.1.0
-      - uses: ./.github/promci/actions/publish_release
+      - uses: prometheus/promci/publish_release@370e8c15dcec50043cbe66f2f34633d9efc0a190 # v0.9.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}

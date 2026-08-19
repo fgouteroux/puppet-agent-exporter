@@ -15,13 +15,18 @@
 package exporter
 
 import (
+	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
-	"github.com/prometheus/common/promlog"
-	"github.com/prometheus/common/promlog/flag"
+	"github.com/alecthomas/kingpin/v2"
+	"github.com/prometheus/client_golang/prometheus"
+	versioncollector "github.com/prometheus/client_golang/prometheus/collectors/version"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/prometheus/common/promslog"
+	promslogflag "github.com/prometheus/common/promslog/flag"
+	"github.com/prometheus/common/version"
 	"github.com/prometheus/exporter-toolkit/web"
 	webflag "github.com/prometheus/exporter-toolkit/web/kingpinflag"
 
@@ -29,15 +34,11 @@ import (
 	"github.com/fgouteroux/puppet-agent-exporter/puppetconfig"
 	"github.com/fgouteroux/puppet-agent-exporter/puppetdisabled"
 	"github.com/fgouteroux/puppet-agent-exporter/puppetreport"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/prometheus/common/version"
-	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 type Exporter struct {
 	server    *http.Server
-	Logger    log.Logger
+	Logger    *slog.Logger
 	webConfig *web.FlagConfig
 }
 
@@ -46,15 +47,15 @@ func InitExporter() (e *Exporter) {
 		metricsPath = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
 		webConfig   = webflag.AddFlags(kingpin.CommandLine, ":9819")
 	)
-	promlogConfig := &promlog.Config{}
-	flag.AddFlags(kingpin.CommandLine, promlogConfig)
+	promslogConfig := &promslog.Config{}
+	promslogflag.AddFlags(kingpin.CommandLine, promslogConfig)
 	kingpin.Version(version.Print("puppet-agent-exporter"))
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
-	logger, err := customlog.InitLogger(promlogConfig)
+
+	logger, err := customlog.InitLogger(promslogConfig)
 	if err != nil {
-		var logger log.Logger
-		level.Error(logger).Log("Failed to init custom logger", err)
+		fmt.Fprintf(os.Stderr, "Failed to init custom logger: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -67,24 +68,27 @@ func InitExporter() (e *Exporter) {
 	prometheus.MustRegister(puppetdisabled.Collector{
 		Logger: logger,
 	})
-	prometheus.MustRegister(version.NewCollector("puppet_agent_exporter"))
+	prometheus.MustRegister(versioncollector.NewCollector("puppet_agent_exporter"))
 
-	level.Info(logger).Log("msg", "Starting puppet-agent-exporter", "version", version.Info())
-	level.Info(logger).Log("msg", "Build context", "build_context", version.BuildContext())
+	logger.Info("Starting puppet-agent-exporter", "version", version.Info())
+	logger.Info("Build context", "build_context", version.BuildContext())
 
-	http.Handle(*metricsPath, promhttp.Handler())
-	http.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
-		w.Write([]byte(`<html>
+	mux := http.NewServeMux()
+	mux.Handle(*metricsPath, promhttp.Handler())
+	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
+		if _, err := w.Write([]byte(`<html>
 			<head><title>Puppet Agent Exporter</title></head>
 			<body>
 			<h1>Puppet Agent Exporter</h1>
 			<p><a href="` + *metricsPath + `">Metrics</a></p>
 			</body>
-			</html>`))
+			</html>`)); err != nil {
+			logger.Error("Failed to write landing page", "err", err)
+		}
 	})
 
 	return &Exporter{
-		server:    &http.Server{},
+		server:    &http.Server{Handler: mux},
 		Logger:    logger,
 		webConfig: webConfig,
 	}
@@ -93,7 +97,7 @@ func InitExporter() (e *Exporter) {
 // Serve Start the http web server
 func (e *Exporter) Serve() {
 	if err := web.ListenAndServe(e.server, e.webConfig, e.Logger); err != nil {
-		level.Error(e.Logger).Log("err", err)
+		e.Logger.Error("Failed to run web server", "err", err)
 		os.Exit(1)
 	}
 }

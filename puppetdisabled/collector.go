@@ -17,10 +17,10 @@ package puppetdisabled
 import (
 	"encoding/json"
 	"errors"
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
-	"github.com/prometheus/client_golang/prometheus"
+	"log/slog"
 	"os"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 var disabledLockDesc = prometheus.NewDesc(
@@ -31,7 +31,7 @@ var disabledLockDesc = prometheus.NewDesc(
 )
 
 type Collector struct {
-	Logger   log.Logger
+	Logger   *slog.Logger
 	LockPath string
 }
 
@@ -43,7 +43,7 @@ func (c Collector) Collect(ch chan<- prometheus.Metric) {
 	var errVal float64
 	disabledLock, err := processDisabledLock(c.lockPath())
 	if err != nil {
-		level.Error(c.Logger).Log("msg", "Failed to read puppet agent disabled lock file", "err", err)
+		c.Logger.Error("Failed to read puppet agent disabled lock file", "err", err)
 		errVal = 1.0
 	} else {
 		var disabledLockMetricValue float64
