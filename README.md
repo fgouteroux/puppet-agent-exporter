@@ -94,12 +94,23 @@ groups:
         expr: puppet_last_run_success == 0
         for: 40m
       - alert: StalePuppetCatalog
-        expr: time() - puppet_last_catalog_version > 3*60*60
+        expr: time() - puppet_last_run_catalog_version > 3*60*60
         for: 40m
       - alert: LastPuppetTooLongAgo
         expr: time() - puppet_last_run_at_seconds > 3*60*60
         for: 40m
+      - alert: PuppetExporterScrapeError
+        expr: >-
+          puppet_last_run_scrape_error == 1
+          or puppet_config_scrape_error == 1
+          or puppet_disabled_scrape_error == 1
+        for: 40m
 ```
+
+Note the `*_scrape_error` rule. When the exporter cannot read one of the files it
+reports on, the corresponding metrics are *absent* rather than zero, so rules
+like `puppet_last_run_success == 0` match nothing and stay silent. Alerting on
+the scrape errors is what catches that case.
 
 We've found it worthwhile to avoid alerting on conditions affecting individual
 nodes until that condition has persisted long enough to affect more than one
@@ -112,6 +123,28 @@ issues contacting the Puppet Server.
 Alerting on a non-default environment being set helps catch operator error,
 for example when a node is used to test changes from a branch environment
 but forgotten about after that branch is merged.
+
+## Configuration
+
+All flags are optional. The file paths default to the standard Puppet Agent
+locations for the platform the exporter was built for.
+
+```
+--web.listen-address=:9819    Address on which to expose metrics.
+--web.telemetry-path=/metrics Path under which to expose metrics.
+--web.config.file=""          TLS and basic authentication configuration.
+--puppet.config-path=...      Path to the puppet agent configuration file.
+--puppet.lock-path=...        Path to the puppet agent disabled lock file.
+--puppet.report-path=...      Path to the puppet agent last run report file.
+--log.level=info              One of: debug, info, warn, error.
+--log.format=logfmt           One of: logfmt, json.
+```
+
+Run `puppet-agent-exporter --help` for the platform-specific defaults.
+
+The last run report is only re-parsed when its size or modification time
+changes, so scraping frequently does not repeatedly parse a report that Puppet
+only rewrites once per run.
 
 ## TLS and basic authentication
 
@@ -136,7 +169,6 @@ internally.
 
 ### Areas needing improvement
 
-*   Test coverage
 *   General code hygiene and refactoring
 *   Better packaging (supporting RPM distros, including a systemd unit, etc...)
 
