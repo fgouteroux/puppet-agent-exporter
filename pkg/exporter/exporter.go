@@ -15,10 +15,13 @@
 package exporter
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/prometheus/client_golang/prometheus"
@@ -45,6 +48,9 @@ type Exporter struct {
 func InitExporter() (e *Exporter) {
 	var (
 		metricsPath = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
+		configPath  = kingpin.Flag("puppet.config-path", "Path to the puppet agent configuration file.").Default(puppetconfig.DefaultConfigPath).String()
+		lockPath    = kingpin.Flag("puppet.lock-path", "Path to the puppet agent disabled lock file.").Default(puppetdisabled.DefaultLockPath).String()
+		reportPath  = kingpin.Flag("puppet.report-path", "Path to the puppet agent last run report file.").Default(puppetreport.DefaultReportPath).String()
 		webConfig   = webflag.AddFlags(kingpin.CommandLine, ":9819")
 	)
 	promslogConfig := &promslog.Config{}
@@ -59,14 +65,22 @@ func InitExporter() (e *Exporter) {
 		os.Exit(1)
 	}
 
-	prometheus.MustRegister(puppetconfig.Collector{
-		Logger: logger,
+	if err := validateTelemetryPath(*metricsPath); err != nil {
+		logger.Error("Invalid --web.telemetry-path", "err", err)
+		os.Exit(1)
+	}
+
+	prometheus.MustRegister(&puppetconfig.Collector{
+		Logger:     logger,
+		ConfigPath: *configPath,
 	})
-	prometheus.MustRegister(puppetreport.Collector{
-		Logger: logger,
+	prometheus.MustRegister(&puppetreport.Collector{
+		Logger:     logger,
+		ReportPath: *reportPath,
 	})
-	prometheus.MustRegister(puppetdisabled.Collector{
-		Logger: logger,
+	prometheus.MustRegister(&puppetdisabled.Collector{
+		Logger:   logger,
+		LockPath: *lockPath,
 	})
 	prometheus.MustRegister(versioncollector.NewCollector("puppet_agent_exporter"))
 
@@ -88,10 +102,29 @@ func InitExporter() (e *Exporter) {
 	})
 
 	return &Exporter{
-		server:    &http.Server{Handler: mux},
+		server: &http.Server{
+			Handler: mux,
+			// Bound the time a client may take to send its headers, so idle or
+			// slow connections cannot pile up on the exporter.
+			ReadHeaderTimeout: 10 * time.Second,
+		},
 		Logger:    logger,
 		webConfig: webConfig,
 	}
+}
+
+// validateTelemetryPath rejects the paths that would make the metrics handler
+// collide with, or shadow, the landing page.
+func validateTelemetryPath(path string) error {
+	switch {
+	case path == "":
+		return errors.New("path must not be empty")
+	case !strings.HasPrefix(path, "/"):
+		return fmt.Errorf("path %q must start with %q", path, "/")
+	case path == "/":
+		return errors.New(`path must not be "/", which is already used by the landing page`)
+	}
+	return nil
 }
 
 // Serve Start the http web server

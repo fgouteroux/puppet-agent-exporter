@@ -3,6 +3,16 @@
 * [CHANGE] go 1.26
 * [CHANGE] update all go dependencies
 * [CHANGE] replace go-kit/log with the standard library log/slog
+* [FEATURE] add --puppet.config-path, --puppet.lock-path and --puppet.report-path
+* [ENHANCEMENT] cache the parsed run report until the file changes
+* [ENHANCEMENT] declare the scrape_error metrics in Describe
+* [ENHANCEMENT] limit the length of the disabled_message label
+* [ENHANCEMENT] set a read header timeout on the web server
+* [FIX] keep reporting run metrics when configuration_version is not numeric
+* [FIX] read server and environment from the puppet.conf [agent] section
+* [FIX] report the disabled lock state when its message cannot be parsed
+* [FIX] report an unknown run duration as NaN instead of -1
+* [FIX] reject invalid --web.telemetry-path instead of panicking
 * [FIX] windows service no longer exits on an unexpected control request
 * [FIX] do not log through a nil logger when logger initialisation fails
 

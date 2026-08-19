@@ -16,9 +16,12 @@
 
 package puppetreport
 
-func (c Collector) reportPath() string {
+// DefaultReportPath is the default location of the puppet agent last run report file on unix.
+const DefaultReportPath = "/opt/puppetlabs/puppet/cache/state/last_run_report.yaml"
+
+func (c *Collector) reportPath() string {
 	if c.ReportPath != "" {
 		return c.ReportPath
 	}
-	return "/opt/puppetlabs/puppet/cache/state/last_run_report.yaml"
+	return DefaultReportPath
 }

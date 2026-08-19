@@ -16,15 +16,18 @@ package puppetreport
 
 import (
 	"errors"
+	"fmt"
+	"math"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	"go.yaml.in/yaml/v2"
 )
 
 type runReport struct {
-	ConfigurationVersion float64                     `yaml:"configuration_version"`
+	ConfigurationVersion catalogVersion              `yaml:"configuration_version"`
 	Time                 time.Time                   `yaml:"time"`
 	TransactionCompleted bool                        `yaml:"transaction_completed"`
 	ReportFormat         int                         `yaml:"report_format"`
@@ -38,7 +41,7 @@ func (r runReport) interpret() interpretedReport {
 	return interpretedReport{
 		RunAt:                 asUnixSeconds(r.Time),
 		RunDuration:           r.totalDuration(),
-		CatalogVersion:        r.ConfigurationVersion,
+		CatalogVersion:        float64(r.ConfigurationVersion),
 		RunReportResources:    resourcesMetrics,
 		RunReportEvents:       r.eventsMetrics(),
 		RunReportChanges:      r.changesMetrics(),
@@ -47,19 +50,52 @@ func (r runReport) interpret() interpretedReport {
 	}
 }
 
+// catalogVersion holds Puppet's configuration_version. By default Puppet writes
+// the catalog compile timestamp there, but the config_version setting may point
+// at a script returning an arbitrary string. Such a report must still yield all
+// the other run metrics, so a non-numeric version decodes to NaN rather than
+// failing the whole document.
+type catalogVersion float64
+
+func (v *catalogVersion) UnmarshalYAML(unmarshal func(any) error) error {
+	var raw any
+	if err := unmarshal(&raw); err != nil {
+		return err
+	}
+
+	switch value := raw.(type) {
+	case nil:
+		*v = catalogVersion(math.NaN())
+	case int:
+		*v = catalogVersion(value)
+	case int64:
+		*v = catalogVersion(value)
+	case float64:
+		*v = catalogVersion(value)
+	case string:
+		parsed, err := strconv.ParseFloat(value, 64)
+		if err != nil {
+			*v = catalogVersion(math.NaN())
+			return nil
+		}
+		*v = catalogVersion(parsed)
+	default:
+		return fmt.Errorf("unsupported configuration_version type %T", raw)
+	}
+	return nil
+}
+
 func asUnixSeconds(t time.Time) float64 {
 	return float64(t.Unix()) + (float64(t.Nanosecond()) / 1e+9)
 }
 
+// totalDuration returns the total run duration, or NaN when the report does not
+// carry one. A negative duration would otherwise be indistinguishable from a
+// real measurement.
 func (r runReport) totalDuration() float64 {
-	timeMetrics, ok := r.Metrics["time"]
+	total, ok := r.metricValues("time")["total"]
 	if !ok {
-		return -1
-	}
-	values := timeMetrics.Values()
-	total, ok := values["total"]
-	if !ok {
-		return -1
+		return math.NaN()
 	}
 	return total
 }
@@ -143,4 +179,49 @@ func load(path string) (runReport, error) {
 	var report runReport
 	err = decoder.Decode(&report)
 	return report, errors.Join(err, file.Close())
+}
+
+// reportCache memoises the parsed report. Puppet rewrites the report once per
+// run (every 30 minutes by default) while the exporter may be scraped every few
+// seconds, and parsing a report of a few hundred kilobytes costs tens of
+// milliseconds and several megabytes of garbage each time.
+type reportCache struct {
+	mu       sync.Mutex
+	path     string
+	modTime  time.Time
+	size     int64
+	report   interpretedReport
+	hasValue bool
+}
+
+// get returns the interpreted report for path, reusing the previous parse while
+// the file's size and modification time are unchanged.
+func (c *reportCache) get(path string) (interpretedReport, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return interpretedReport{}, err
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.hasValue && c.path == path && c.size == info.Size() && c.modTime.Equal(info.ModTime()) {
+		return c.report, nil
+	}
+
+	report, err := load(path)
+	if err != nil {
+		// Drop the stale entry so a later scrape re-reads the file rather than
+		// serving a report that no longer matches what is on disk.
+		c.hasValue = false
+		return interpretedReport{}, err
+	}
+
+	c.path = path
+	c.size = info.Size()
+	c.modTime = info.ModTime()
+	c.report = report.interpret()
+	c.hasValue = true
+
+	return c.report, nil
 }

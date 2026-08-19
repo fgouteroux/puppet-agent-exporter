@@ -72,14 +72,22 @@ var (
 		[]string{"type"},
 		nil,
 	)
+	scrapeErrorDesc = prometheus.NewDesc(
+		"puppet_last_run_scrape_error",
+		"1 if there was an error opening or reading a file, 0 otherwise",
+		nil,
+		nil,
+	)
 )
 
 type Collector struct {
 	Logger     *slog.Logger
 	ReportPath string
+
+	cache reportCache
 }
 
-func (c Collector) Describe(ch chan<- *prometheus.Desc) {
+func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- catalogVersionDesc
 	ch <- runAtDesc
 	ch <- runDurationDesc
@@ -88,26 +96,19 @@ func (c Collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- runEventsDesc
 	ch <- runChangesDesc
 	ch <- runReportTimeDurationDesc
+	ch <- scrapeErrorDesc
 }
 
-func (c Collector) Collect(ch chan<- prometheus.Metric) {
+func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	var errVal float64
-	if report, err := load(c.reportPath()); err != nil {
+	if report, err := c.cache.get(c.reportPath()); err != nil {
 		c.Logger.Error("Failed to read puppet run report file", "err", err)
 		errVal = 1.0
 	} else {
-		result := report.interpret()
-		result.collect(ch)
+		report.collect(ch)
 	}
 
-	ch <- prometheus.MustNewConstMetric(
-		prometheus.NewDesc(
-			"puppet_last_run_scrape_error",
-			"1 if there was an error opening or reading a file, 0 otherwise",
-			nil, nil,
-		),
-		prometheus.GaugeValue, errVal,
-	)
+	ch <- prometheus.MustNewConstMetric(scrapeErrorDesc, prometheus.GaugeValue, errVal)
 }
 
 type interpretedReport struct {

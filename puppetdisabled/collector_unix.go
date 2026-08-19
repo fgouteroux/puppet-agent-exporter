@@ -16,9 +16,12 @@
 
 package puppetdisabled
 
-func (c Collector) lockPath() string {
+// DefaultLockPath is the default location of the puppet agent disabled lock file on unix.
+const DefaultLockPath = "/opt/puppetlabs/puppet/cache/state/agent_disabled.lock"
+
+func (c *Collector) lockPath() string {
 	if c.LockPath != "" {
 		return c.LockPath
 	}
-	return "/opt/puppetlabs/puppet/cache/state/agent_disabled.lock"
+	return DefaultLockPath
 }

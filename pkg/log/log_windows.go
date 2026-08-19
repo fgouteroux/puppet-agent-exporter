@@ -19,7 +19,6 @@ package log
 import (
 	"context"
 	"log/slog"
-	"runtime"
 	"strings"
 
 	"github.com/prometheus/common/promslog"
@@ -62,10 +61,9 @@ func NewWindowsEventLogger(cfg *promslog.Config) (*slog.Logger, error) {
 		return nil, err
 	}
 
-	// Ensure the logger gets closed when the GC runs. It's valid to have more than one win logger open concurrently.
-	runtime.SetFinalizer(il, func(l *el.Log) {
-		l.Close()
-	})
+	// The handle is deliberately never closed: it is owned by the logger, which
+	// lives for as long as the process does. A finalizer here could never run,
+	// because the handle stays reachable from the returned logger.
 
 	// One handler per Windows event log level, so that the promslog formatting
 	// is reused: the event log API exposes a distinct call per level while an

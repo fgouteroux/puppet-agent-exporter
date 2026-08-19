@@ -21,40 +21,57 @@ import (
 	"gopkg.in/ini.v1"
 )
 
-var configDesc = prometheus.NewDesc(
-	"puppet_config",
-	"Puppet configuration.",
-	[]string{"server", "environment"},
-	nil,
+var (
+	configDesc = prometheus.NewDesc(
+		"puppet_config",
+		"Puppet configuration.",
+		[]string{"server", "environment"},
+		nil,
+	)
+	scrapeErrorDesc = prometheus.NewDesc(
+		"puppet_config_scrape_error",
+		"1 if there was an error opening or reading a file, 0 otherwise",
+		nil,
+		nil,
+	)
 )
+
+// sections are searched in the order Puppet itself resolves agent settings:
+// the agent-specific section wins over the global one.
+var sections = []string{"agent", "main"}
 
 type Collector struct {
 	Logger     *slog.Logger
 	ConfigPath string
 }
 
-func (c Collector) Describe(ch chan<- *prometheus.Desc) {
+func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- configDesc
+	ch <- scrapeErrorDesc
 }
 
-func (c Collector) Collect(ch chan<- prometheus.Metric) {
+func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	var errVal float64
 	config, err := ini.Load(c.configPath())
 	if err != nil {
 		c.Logger.Error("Failed to open puppet config file", "err", err)
 		errVal = 1.0
 	} else {
-		server := config.Section("main").Key("server").String()
-		environment := config.Section("main").Key("environment").String()
+		server := setting(config, "server")
+		environment := setting(config, "environment")
 		ch <- prometheus.MustNewConstMetric(configDesc, prometheus.GaugeValue, 1, server, environment)
 	}
 
-	ch <- prometheus.MustNewConstMetric(
-		prometheus.NewDesc(
-			"puppet_config_scrape_error",
-			"1 if there was an error opening or reading a file, 0 otherwise",
-			nil, nil,
-		),
-		prometheus.GaugeValue, errVal,
-	)
+	ch <- prometheus.MustNewConstMetric(scrapeErrorDesc, prometheus.GaugeValue, errVal)
+}
+
+// setting returns the value of an agent setting, honouring the section
+// precedence Puppet applies when the agent reads its own configuration.
+func setting(config *ini.File, key string) string {
+	for _, section := range sections {
+		if value := config.Section(section).Key(key).String(); value != "" {
+			return value
+		}
+	}
+	return ""
 }

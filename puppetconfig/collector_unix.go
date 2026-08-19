@@ -16,9 +16,12 @@
 
 package puppetconfig
 
-func (c Collector) configPath() string {
+// DefaultConfigPath is the default location of the puppet agent configuration file on unix.
+const DefaultConfigPath = "/etc/puppetlabs/puppet/puppet.conf"
+
+func (c *Collector) configPath() string {
 	if c.ConfigPath != "" {
 		return c.ConfigPath
 	}
-	return "/etc/puppetlabs/puppet/puppet.conf"
+	return DefaultConfigPath
 }
